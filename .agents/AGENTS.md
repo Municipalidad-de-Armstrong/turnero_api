@@ -20,6 +20,6 @@ Este archivo define las directrices y reglas obligatorias para los agentes de In
 
 ## Estructura del Proyecto y Stack Tecnológico
 
-- **Backend (`turnero_api`):** FastAPI (Python 3.10+), SQLAlchemy 2.0 (ORM), Alembic, Pydantic v2, PostgreSQL, Redis, Celery.
-- **Frontend (`turnero`):** Next.js 14+ (App Router), TypeScript, Tailwind CSS, Zustand, Jest/Playwright.
+- **Backend (`turnero_api`):** FastAPI 0.139+ (Python 3.13+), SQLAlchemy 2.0 (ORM), Alembic, Pydantic v2, PostgreSQL 18, Redis 8, Celery v5.6.
+- **Frontend (`turnero`):** Next.js 16 (App Router), TypeScript 7, Tailwind CSS v4, Zustand v5, Jest/Playwright.
 - **Flujo de Trabajo:** Basado en slices verticales definidos en [desarrollo-hoja-ruta.md](file:///c:/Users/pablo/OneDrive/Escritorio/Municipalidad%20de%20Armstrong/docs/proceso/desarrollo-hoja-ruta.md).
