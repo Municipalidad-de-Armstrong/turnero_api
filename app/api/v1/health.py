@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 import redis.asyncio as aioredis
-from app.core.database import get_db
+
 from app.core.config import settings
+from app.core.database import get_db
 
 router = APIRouter()
 
@@ -15,7 +16,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     redis_status = "offline"
     errors = []
 
-    # Verify PostgreSQL connection
+    # Verify Database connection
     try:
         await db.execute(text("SELECT 1"))
         db_status = "online"
