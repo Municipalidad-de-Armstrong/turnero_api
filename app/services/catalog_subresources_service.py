@@ -5,6 +5,8 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import settings
+from app.core.uploads import fs_path_to_url
 from app.models.tramite import Tramite
 from app.models.tramite_documento import TramiteDocumento
 from app.models.tramite_enlace import TramiteEnlace
@@ -14,7 +16,9 @@ from app.schemas.variante import VarianteCreateRequest, VarianteUpdateRequest
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
-UPLOADS_DIR = os.path.join("uploads", "tramites")
+# Subdirectorio dentro de UPLOAD_DIR donde se guardan los formularios de trámites.
+TRAMITES_UPLOAD_SUBDIR = "tramites"
+UPLOADS_DIR = os.path.join(settings.UPLOAD_DIR, TRAMITES_UPLOAD_SUBDIR)
 
 
 class CatalogSubresourcesService:
@@ -118,9 +122,11 @@ class CatalogSubresourcesService:
         with open(file_path, "wb") as f:
             f.write(content)
 
-        relative_path = f"/static/uploads/tramites/{unique_name}"
+        # URL pública derivada del path FS (centralizada en app.core.uploads) para que
+        # el listener de borrado pueda reconstruir correctamente el path de disco.
+        public_url = fs_path_to_url(file_path)
         doc = TramiteDocumento(
-            tramite_id=tramite_id, nombre=nombre, ruta_archivo=relative_path
+            tramite_id=tramite_id, nombre=nombre, ruta_archivo=public_url
         )
         db.add(doc)
         await db.commit()

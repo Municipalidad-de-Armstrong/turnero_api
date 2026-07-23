@@ -1,4 +1,6 @@
 from typing import List, Optional
+import secrets
+import logging
 from fastapi import HTTPException, status
 import redis.asyncio as aioredis
 from sqlalchemy import select
@@ -23,6 +25,10 @@ from app.schemas.auth import (
     UsurpationReportCreate,
     UsurpationReportResponse,
 )
+
+logger = logging.getLogger(__name__)
+
+PASSWORD_RESET_KEY_PREFIX = "pwdreset"
 
 
 class AuthService:
@@ -124,6 +130,90 @@ class AuthService:
             exists = await self.redis.exists(f"blacklist:{token}")
             return bool(exists)
         return False
+
+    async def create_password_reset_token(self, email: str) -> None:
+        """Genera un token opaco de reseteo y lo persiste en Redis con TTL corto.
+
+        Sigue el patrón de la blacklist de JWT (``redis.setex`` con TTL). El envío del
+        correo con el enlace queda desacoplado: en DEV se imprime el link en consola
+        para permitir probar el flujo E2E; el SMTP real asíncrono se implementa en el
+        Slice 10 (notifications) vía Celery.
+        """
+        if not self.redis:
+            # Sin Redis no se puede validar el token; se omite silenciosamente para
+            # preservar la respuesta anti-enumeración (siempre 200).
+            logger.warning("Redis no disponible: no se pudo emitir token de reseteo.")
+            return
+
+        stmt = select(User).where(User.email == email)
+        res = await self.db.execute(stmt)
+        user = res.scalar_one_or_none()
+        if not user or not user.activo or user.estado == "INACTIVE":
+            # Usuario inexistente/inactivo: no emitir token (anti-enumeración).
+            return
+
+        token = secrets.token_urlsafe(32)
+        ttl = settings.PASSWORD_RESET_TOKEN_TTL_MINUTES * 60
+        await self.redis.setex(
+            f"{PASSWORD_RESET_KEY_PREFIX}:{token}", ttl, str(user.id)
+        )
+
+        reset_link = (
+            f"{settings.APP_BASE_URL.rstrip('/')}/auth/resetear-password?token={token}"
+        )
+        await self._send_reset_link(email, reset_link)
+
+    async def _send_reset_link(self, email: str, reset_link: str) -> None:
+        """Despacha el enlace de reseteo al usuario.
+
+        En DEV se imprime en consola/logs para permitir probar el flujo E2E. El envío
+        real por SMTP STARTTLS asíncrono (Celery) se implementa en el Slice 10.
+        """
+        # TODO(Slice 10): enviar por SMTP STARTTLS/Celery en lugar de log/print.
+        if settings.ENVIRONMENT == "development":
+            logger.info("DEV password reset link para %s: %s", email, reset_link)
+            print(f"[DEV] Link de reseteo de contraseña para {email}: {reset_link}")
+        else:
+            logger.info("Token de reseteo emitido para %s (envío SMTP pendiente).", email)
+
+    async def apply_password_reset(self, token: str, new_password: str) -> None:
+        """Valida el token contra Redis, actualiza la contraseña y consume el token
+        (single-use). Lanza 400 si el token es inválido/expirado, 503 si Redis cae."""
+        if not self.redis:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="El servicio de recuperación de contraseña no está disponible.",
+            )
+
+        key = f"{PASSWORD_RESET_KEY_PREFIX}:{token}"
+        user_id_raw = await self.redis.get(key)
+        if not user_id_raw:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token inválido o expirado.",
+            )
+
+        try:
+            user_id = int(user_id_raw)
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token inválido o expirado.",
+            )
+
+        stmt = select(User).where(User.id == user_id)
+        res = await self.db.execute(stmt)
+        user = res.scalar_one_or_none()
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token inválido o expirado.",
+            )
+
+        user.password_hash = hash_password(new_password)
+        await self.db.commit()
+        # Single-use: el token ya no sirve para un nuevo reseteo.
+        await self.redis.delete(key)
 
     async def create_usurpation_report(
         self, req: UsurpationReportCreate

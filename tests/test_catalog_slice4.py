@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+import os
 import pytest
 from fastapi import HTTPException, status
 from httpx import AsyncClient
 
+from app.core.uploads import fs_path_to_url, url_to_fs_path
 from app.models.tramite import Tramite
-from app.models.tramite_documento import TramiteDocumento
+from app.models.tramite_documento import TramiteDocumento, delete_file_from_disk
 from app.models.tramite_enlace import TramiteEnlace
 from app.schemas.tramite_enlace import (
     TramiteEnlaceCreateRequest,
@@ -126,3 +128,82 @@ async def test_api_list_tramite_enlaces(client: AsyncClient):
         data = res.json()
         assert len(data) == 1
         assert data[0]["descripcion"] == "Link Multas"
+
+
+# ---------------- Helpers URL <-> filesystem ----------------
+
+def test_url_fs_roundtrip():
+    fs = os.path.join("uploads", "tramites", "abc123.pdf")
+    url = fs_path_to_url(fs)
+    assert url == "/static/uploads/tramites/abc123.pdf"
+    # Vuelta atrás: url_to_fs_path debe reconstruir el path de disco.
+    back = url_to_fs_path(url)
+    assert back.replace("\\", "/") == "uploads/tramites/abc123.pdf"
+
+
+def test_url_to_fs_path_handles_legacy_url():
+    """Filas pre-fix guardaban la URL literal; el helper debe igual resolverlas."""
+    back = url_to_fs_path("/static/uploads/tramites/ad21df7c.pdf")
+    assert back.replace("\\", "/") == "uploads/tramites/ad21df7c.pdf"
+
+
+# ---------------- Borrado físico de archivo en disco (regresión) ----------------
+
+@pytest.mark.asyncio
+async def test_upload_and_delete_removes_physical_file(tmp_path):
+    """Regresión del bug: al borrar un documento, su archivo físico en disco también
+    debe desaparecer (antes el listener trataba la URL como path FS y nunca borraba)."""
+    db = AsyncMock()
+    # AsyncSession.add() es sincrónico en SQLAlchemy async (no devuelve coroutine);
+    # lo modelamos con MagicMock para que no genere el RuntimeWarning de coroutine
+    # nunca awaiteada.
+    db.add = MagicMock()
+
+    # El trámite existe.
+    mock_tramite = MagicMock()
+    mock_tramite.scalar_one_or_none.return_value = Tramite(id=1, nombre="Licencia B1")
+
+    async def fake_execute(stmt):
+        return mock_tramite
+
+    async def fake_delete(obj):
+        # Simula el flush de SQLAlchemy que dispara el listener after_delete.
+        delete_file_from_disk(None, None, obj)
+
+    db.execute.side_effect = fake_execute
+    db.delete.side_effect = fake_delete
+
+    mock_upload = AsyncMock()
+    mock_upload.filename = "formulario.pdf"
+    mock_upload.read.return_value = b"%PDF-1.4 fake content"
+
+    # Redirigimos el directorio de uploads a un tmp_path controlado.
+    with patch(
+        "app.services.catalog_subresources_service.UPLOADS_DIR",
+        os.path.join(str(tmp_path), "tramites"),
+    ), patch(
+        "app.core.uploads.settings.UPLOAD_DIR", str(tmp_path)
+    ):
+        doc = await CatalogSubresourcesService.upload_documento(
+            db, 1, "Formulario DDJJ", mock_upload
+        )
+
+        # El archivo físico existe tras subirlo.
+        fs_path = url_to_fs_path(doc.ruta_archivo)
+        assert os.path.exists(fs_path), "el archivo subido debe existir en disco"
+
+        # Simular el SELECT del documento para borrarlo.
+        mock_doc = MagicMock()
+        mock_doc.scalar_one_or_none.return_value = doc
+
+        async def fake_select_result(stmt):
+            return mock_doc
+
+        db.execute.side_effect = fake_select_result
+
+        await CatalogSubresourcesService.delete_documento(db, 1, doc.id)
+
+        # El archivo físico debe haberse borrado del disco.
+        assert not os.path.exists(fs_path), (
+            "el listener after_delete debe borrar el archivo físico del disco"
+        )

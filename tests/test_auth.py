@@ -58,7 +58,7 @@ async def test_report_usurpation_success(client: AsyncClient):
         "motivo": "Intento registrarme y mi DNI figura en uso por otra persona.",
     }
 
-    with patch("app.services.auth_service.AuthService.create_usurpation_report") as mock_rep:
+    with patch("app.api.v1.admin_usurpations.AuthService.create_usurpation_report") as mock_rep:
         mock_rep.return_value = UsurpationReportResponse(
             id=1,
             nombre="Juan",
@@ -71,7 +71,7 @@ async def test_report_usurpation_success(client: AsyncClient):
             created_at=datetime.now(timezone.utc),
         )
 
-        response = await client.post("/api/v1/auth/usurpaciones", json=payload)
+        response = await client.post("/api/v1/reportes-usurpacion", json=payload)
         assert response.status_code == 201
         data = response.json()
         assert data["nombre"] == "Juan"

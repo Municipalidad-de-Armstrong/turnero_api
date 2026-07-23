@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import DateTime, ForeignKey, String, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.database import Base
+from app.core.uploads import url_to_fs_path
 
 if TYPE_CHECKING:
     from app.models.tramite import Tramite
@@ -35,8 +36,13 @@ class TramiteDocumento(Base):
 
 @event.listens_for(TramiteDocumento, "after_delete")
 def delete_file_from_disk(mapper, connection, target: TramiteDocumento) -> None:
-    if target.ruta_archivo and os.path.exists(target.ruta_archivo):
+    # ruta_archivo se persiste como URL pública (ej. /static/uploads/tramites/x.pdf);
+    # el archivo vive en disco bajo UPLOAD_DIR. Convertimos antes de tocar el FS.
+    if not target.ruta_archivo:
+        return
+    fs_path = url_to_fs_path(target.ruta_archivo)
+    if fs_path and os.path.exists(fs_path):
         try:
-            os.remove(target.ruta_archivo)
+            os.remove(fs_path)
         except OSError:
             pass

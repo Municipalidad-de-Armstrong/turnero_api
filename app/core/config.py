@@ -52,11 +52,23 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     SESSION_COOKIE_NAME: str = "session"
+    # Cookie `Secure` flag: False en desarrollo (HTTP local), True en producción (HTTPS).
+    # Cumple infraestructura-seguridad.md §3.1 (cookie Secure obligatoria).
+    SESSION_COOKIE_SECURE: bool = False
+
+    # Password reset tokens (almacenados en Redis con TTL corto)
+    PASSWORD_RESET_TOKEN_TTL_MINUTES: int = 15
+    # URL pública del frontend, usada para construir el enlace de reseteo en DEV (logs).
+    APP_BASE_URL: str = "http://localhost:3000"
 
     # PII Encryption & Search Hashing
     # Fernet key must be 32 base64-encoded bytes
     PII_SECRET_KEY: str = "d3Z4eF9hYmNfZGVmX2doaV9qa2xfbW5vX3Bxcl9zdHV2d3g="
     DNI_HMAC_SALT: str = "armstrong_fixed_salt_for_dni_search_2026"
+
+    # Archivos estáticos (uploads de formularios PDF/DOCX)
+    UPLOAD_DIR: str = "uploads"
+    STATIC_URL_PREFIX: str = "/static/uploads"
 
     model_config = SettingsConfigDict(
         env_file=".env",
