@@ -84,7 +84,8 @@ def require_roles(allowed_roles: List[str]):
         res = await db.execute(stmt)
         role = res.scalar_one()
 
-        if role.nombre not in allowed_roles:
+        allowed_normalized = [r.lower().strip() for r in allowed_roles]
+        if role.nombre.lower().strip() not in allowed_normalized:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Permisos insuficientes.",

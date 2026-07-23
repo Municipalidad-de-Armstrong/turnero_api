@@ -1,0 +1,145 @@
+from typing import List, Optional
+from fastapi import HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.area import Area
+from app.models.tramite import Tramite
+from app.schemas.area import AreaCreateRequest, AreaUpdateRequest
+from app.schemas.tramite import TramiteCreateRequest, TramiteUpdateRequest
+
+
+class CatalogService:
+    @staticmethod
+    async def get_all_areas(db: AsyncSession) -> List[Area]:
+        result = await db.execute(select(Area).order_by(Area.nombre))
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_area_by_id(db: AsyncSession, area_id: int) -> Area:
+        result = await db.execute(select(Area).where(Area.id == area_id))
+        area = result.scalar_one_or_none()
+        if not area:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Área con id {area_id} no encontrada",
+            )
+        return area
+
+    @staticmethod
+    async def create_area(db: AsyncSession, data: AreaCreateRequest) -> Area:
+        existing = await db.execute(select(Area).where(Area.nombre == data.nombre))
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe un área registrada con el nombre '{data.nombre}'",
+            )
+        area = Area(nombre=data.nombre, descripcion=data.descripcion)
+        db.add(area)
+        await db.commit()
+        await db.refresh(area)
+        return area
+
+    @staticmethod
+    async def update_area(db: AsyncSession, area_id: int, data: AreaUpdateRequest) -> Area:
+        area = await CatalogService.get_area_by_id(db, area_id)
+        if data.nombre is not None and data.nombre != area.nombre:
+            existing = await db.execute(select(Area).where(Area.nombre == data.nombre))
+            if existing.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"Ya existe otra área con el nombre '{data.nombre}'",
+                )
+            area.nombre = data.nombre
+        if data.descripcion is not None:
+            area.descripcion = data.descripcion
+        await db.commit()
+        await db.refresh(area)
+        return area
+
+    @staticmethod
+    async def delete_area(db: AsyncSession, area_id: int) -> None:
+        area = await CatalogService.get_area_by_id(db, area_id)
+        tramites_result = await db.execute(
+            select(Tramite).where(Tramite.area_id == area_id)
+        )
+        if tramites_result.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"No se puede eliminar el área '{area.nombre}' porque contiene trámites asociados.",
+            )
+        await db.delete(area)
+        await db.commit()
+
+    @staticmethod
+    async def get_all_tramites(
+        db: AsyncSession,
+        area_id: Optional[int] = None,
+        search: Optional[str] = None,
+    ) -> List[Tramite]:
+        query = select(Tramite).order_by(Tramite.nombre)
+        if area_id is not None:
+            query = query.where(Tramite.area_id == area_id)
+        if search:
+            query = query.where(Tramite.nombre.ilike(f"%{search}%"))
+        result = await db.execute(query)
+        return list(result.scalars().all())
+
+    @staticmethod
+    async def get_tramites_by_area(db: AsyncSession, area_id: int) -> List[Tramite]:
+        await CatalogService.get_area_by_id(db, area_id)
+        return await CatalogService.get_all_tramites(db, area_id=area_id)
+
+    @staticmethod
+    async def get_tramite_by_id(db: AsyncSession, tramite_id: int) -> Tramite:
+        result = await db.execute(select(Tramite).where(Tramite.id == tramite_id))
+        tramite = result.scalar_one_or_none()
+        if not tramite:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Trámite con id {tramite_id} no encontrado",
+            )
+        return tramite
+
+    @staticmethod
+    async def create_tramite(db: AsyncSession, data: TramiteCreateRequest) -> Tramite:
+        await CatalogService.get_area_by_id(db, data.area_id)
+        tramite = Tramite(
+            area_id=data.area_id,
+            nombre=data.nombre,
+            descripcion=data.descripcion,
+            documentacion_requerida=data.documentacion_requerida,
+            requerimientos_previos=data.requerimientos_previos,
+            emite_carnet=data.emite_carnet,
+            limite_sobreturnos_diarios=data.limite_sobreturnos_diarios,
+        )
+        db.add(tramite)
+        await db.commit()
+        await db.refresh(tramite)
+        return tramite
+
+    @staticmethod
+    async def update_tramite(
+        db: AsyncSession, tramite_id: int, data: TramiteUpdateRequest
+    ) -> Tramite:
+        tramite = await CatalogService.get_tramite_by_id(db, tramite_id)
+        if data.nombre is not None:
+            tramite.nombre = data.nombre
+        if data.descripcion is not None:
+            tramite.descripcion = data.descripcion
+        if data.documentacion_requerida is not None:
+            tramite.documentacion_requerida = data.documentacion_requerida
+        if data.requerimientos_previos is not None:
+            tramite.requerimientos_previos = data.requerimientos_previos
+        if data.emite_carnet is not None:
+            tramite.emite_carnet = data.emite_carnet
+        if data.limite_sobreturnos_diarios is not None:
+            tramite.limite_sobreturnos_diarios = data.limite_sobreturnos_diarios
+        await db.commit()
+        await db.refresh(tramite)
+        return tramite
+
+    @staticmethod
+    async def delete_tramite(db: AsyncSession, tramite_id: int) -> None:
+        tramite = await CatalogService.get_tramite_by_id(db, tramite_id)
+        await db.delete(tramite)
+        await db.commit()
