@@ -45,6 +45,7 @@ htmlcov/
 # Local configuration
 .env
 
-# Database migrations
+# Database migrations & uploads
 *.db
 *.sqlite
+uploads/

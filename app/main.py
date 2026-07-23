@@ -1,6 +1,8 @@
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import admin_usurpations, areas, auth, health, tramites, users
 from app.core.config import settings
@@ -10,6 +12,7 @@ from app.core.seed import seed_initial_data
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    os.makedirs(os.path.join("uploads", "tramites"), exist_ok=True)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
@@ -33,6 +36,9 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["GET", "POST", "DELETE", "OPTIONS", "PATCH"],
         allow_headers=["*"],
     )
+
+os.makedirs("uploads", exist_ok=True)
+app.mount("/static/uploads", StaticFiles(directory="uploads"), name="static_uploads")
 
 app.include_router(health.router, prefix=settings.API_V1_STR)
 app.include_router(auth.router, prefix=settings.API_V1_STR)

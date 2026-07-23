@@ -1,6 +1,9 @@
 from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
+from app.schemas.variante import VarianteResponse
+from app.schemas.tramite_documento import TramiteDocumentoResponse
+from app.schemas.tramite_enlace import TramiteEnlaceResponse
 
 
 class TramiteCreateRequest(BaseModel):
@@ -37,8 +40,8 @@ class TramiteResponse(BaseModel):
 
 
 class TramiteDetailResponse(TramiteResponse):
-    variantes: List[dict] = []
-    documentos: List[dict] = []
-    enlaces: List[dict] = []
+    variantes: List[VarianteResponse] = []
+    documentos: List[TramiteDocumentoResponse] = []
+    enlaces: List[TramiteEnlaceResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

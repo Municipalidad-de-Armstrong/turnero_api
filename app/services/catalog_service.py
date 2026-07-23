@@ -8,7 +8,11 @@ from app.schemas.area import AreaCreateRequest, AreaUpdateRequest
 from app.schemas.tramite import TramiteCreateRequest, TramiteUpdateRequest
 
 
+from sqlalchemy.orm import selectinload
+
+
 class CatalogService:
+
     @staticmethod
     async def get_all_areas(db: AsyncSession) -> List[Area]:
         result = await db.execute(select(Area).order_by(Area.nombre))
@@ -91,7 +95,16 @@ class CatalogService:
 
     @staticmethod
     async def get_tramite_by_id(db: AsyncSession, tramite_id: int) -> Tramite:
-        result = await db.execute(select(Tramite).where(Tramite.id == tramite_id))
+        query = (
+            select(Tramite)
+            .options(
+                selectinload(Tramite.variantes),
+                selectinload(Tramite.documentos),
+                selectinload(Tramite.enlaces),
+            )
+            .where(Tramite.id == tramite_id)
+        )
+        result = await db.execute(query)
         tramite = result.scalar_one_or_none()
         if not tramite:
             raise HTTPException(
@@ -99,6 +112,7 @@ class CatalogService:
                 detail=f"Trámite con id {tramite_id} no encontrado",
             )
         return tramite
+
 
     @staticmethod
     async def create_tramite(db: AsyncSession, data: TramiteCreateRequest) -> Tramite:

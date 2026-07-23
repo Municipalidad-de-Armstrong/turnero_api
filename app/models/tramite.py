@@ -6,6 +6,10 @@ from app.core.database import Base
 
 if TYPE_CHECKING:
     from app.models.area import Area
+    from app.models.variante import Variante
+    from app.models.tramite_documento import TramiteDocumento
+    from app.models.tramite_enlace import TramiteEnlace
+
 
 
 class Tramite(Base):
@@ -34,3 +38,13 @@ class Tramite(Base):
     )
 
     area: Mapped["Area"] = relationship("Area", back_populates="tramites")
+    variantes: Mapped[list["Variante"]] = relationship(
+        "Variante", back_populates="tramite", cascade="all, delete-orphan"
+    )
+    documentos: Mapped[list["TramiteDocumento"]] = relationship(
+        "TramiteDocumento", back_populates="tramite", cascade="all, delete-orphan"
+    )
+    enlaces: Mapped[list["TramiteEnlace"]] = relationship(
+        "TramiteEnlace", back_populates="tramite", cascade="all, delete-orphan"
+    )
+

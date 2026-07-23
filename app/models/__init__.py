@@ -4,5 +4,18 @@ from app.models.user import User
 from app.models.usurpation_report import UsurpationReport
 from app.models.area import Area
 from app.models.tramite import Tramite
+from app.models.variante import Variante
+from app.models.tramite_documento import TramiteDocumento
+from app.models.tramite_enlace import TramiteEnlace
 
-__all__ = ["Base", "Role", "User", "UsurpationReport", "Area", "Tramite"]
+__all__ = [
+    "Base",
+    "Role",
+    "User",
+    "UsurpationReport",
+    "Area",
+    "Tramite",
+    "Variante",
+    "TramiteDocumento",
+    "TramiteEnlace",
+]
