@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.v1 import admin_usurpations, areas, auth, health, tramites, users
 from app.core.config import settings
 from app.core.database import Base, async_session_maker, engine
+from app.core.redis import close_redis_client
 from app.core.seed import seed_initial_data
 
 
@@ -20,6 +21,9 @@ async def lifespan(app: FastAPI):
         await seed_initial_data(session)
 
     yield
+
+    # Cierra el pool de Redis compartido al apagar la aplicación.
+    await close_redis_client()
 
 
 app = FastAPI(

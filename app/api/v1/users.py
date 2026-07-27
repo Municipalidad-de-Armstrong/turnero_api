@@ -4,7 +4,13 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db, require_roles
-from app.core.security import decrypt_pii, encrypt_pii, hash_dni_hmac, mask_dni, mask_phone
+from app.core.security import (
+    decrypt_pii,
+    encrypt_pii,
+    hash_dni_hmac,
+    mask_dni,
+    mask_phone,
+)
 from app.models.role import Role
 from app.models.user import User
 from app.schemas.auth import UserResponse, UserUpdateRequest
@@ -17,14 +23,12 @@ async def get_my_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Role).where(Role.id == current_user.rol_id)
-    res = await db.execute(stmt)
-    role = res.scalar_one()
-
+    # El rol ya viene cargado por get_current_user (eager-load), evitando una
+    # segunda query a la base de datos en cada llamada a /me.
     raw_dni = decrypt_pii(current_user.dni_cifrado)
     raw_phone = decrypt_pii(current_user.telefono_cifrado)
 
-    if role.nombre in ["administrador", "administrativo"]:
+    if current_user.rol.nombre in ["administrador", "administrativo"]:
         dni_display = raw_dni
         phone_display = raw_phone
     else:
@@ -38,7 +42,7 @@ async def get_my_profile(
         email=current_user.email,
         dni=dni_display,
         telefono=phone_display,
-        rol=role.nombre,
+        rol=current_user.rol.nombre,
         activo=current_user.activo,
         estado=current_user.estado,
         created_at=current_user.created_at,
