@@ -13,17 +13,8 @@ from app.models.user import User
 
 
 async def get_redis() -> AsyncGenerator[Optional[aioredis.Redis], None]:
-    """Devuelve el cliente Redis compartido (no lo cierra: se reutiliza entre
-    peticiones). Si Redis no está disponible, devuelve ``None`` para que los
-    consumidores degraden con elegancia (mismas semántica que antes)."""
-    client = get_redis_client()
-    try:
-        # Ping liviano: valida que el pool tenga una conexión sana. Reusa la misma
-        # conexión del pool en lugar de abrir/cerrar una por petición.
-        await client.ping()
-        yield client
-    except Exception:
-        yield None
+    """Devuelve el cliente Redis global reutilizando el pool de conexiones."""
+    yield get_redis_client()
 
 
 async def get_current_user(
@@ -51,6 +42,8 @@ async def get_current_user(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Sesión revocada.",
                 )
+        except HTTPException:
+            raise
         except Exception:
             pass
 
@@ -63,8 +56,6 @@ async def get_current_user(
             detail="Token inválido o expirado.",
         )
 
-    # Eager-load del rol para evitar una segunda query en /usuarios/me y
-    # require_roles (que solo leen current_user.rol.nombre).
     stmt = select(User).options(selectinload(User.rol)).where(User.id == user_id)
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -82,8 +73,6 @@ def require_roles(allowed_roles: List[str]):
     async def role_checker(
         current_user: User = Depends(get_current_user),
     ) -> User:
-        # El rol ya viene cargado por get_current_user (eager-load), así que no
-        # hace falta una segunda query a la base de datos.
         allowed_normalized = [r.lower().strip() for r in allowed_roles]
         if current_user.rol.nombre.lower().strip() not in allowed_normalized:
             raise HTTPException(

@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from app.api.v1 import admin_usurpations, areas, auth, health, tramites, users
+from app.api.v1 import admin_usurpations, agenda, areas, auth, health, tramites, users
 from app.core.config import settings
 from app.core.database import Base, async_session_maker, engine
 from app.core.redis import close_redis_client
@@ -50,6 +50,7 @@ app.include_router(admin_usurpations.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)
 app.include_router(areas.router, prefix=settings.API_V1_STR)
 app.include_router(tramites.router, prefix=settings.API_V1_STR)
+app.include_router(agenda.router, prefix=settings.API_V1_STR)
 
 
 @app.get("/")

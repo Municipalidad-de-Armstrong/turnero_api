@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.variante import Variante
     from app.models.tramite_documento import TramiteDocumento
     from app.models.tramite_enlace import TramiteEnlace
+    from app.models.agenda_configuracion import AgendaConfiguracion
 
 
 
@@ -46,5 +47,8 @@ class Tramite(Base):
     )
     enlaces: Mapped[list["TramiteEnlace"]] = relationship(
         "TramiteEnlace", back_populates="tramite", cascade="all, delete-orphan"
+    )
+    agenda_configuraciones: Mapped[list["AgendaConfiguracion"]] = relationship(
+        "AgendaConfiguracion", back_populates="tramite", cascade="all, delete-orphan"
     )
 

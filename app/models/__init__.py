@@ -7,6 +7,7 @@ from app.models.tramite import Tramite
 from app.models.variante import Variante
 from app.models.tramite_documento import TramiteDocumento
 from app.models.tramite_enlace import TramiteEnlace
+from app.models.agenda_configuracion import AgendaConfiguracion
 
 __all__ = [
     "Base",
@@ -18,4 +19,5 @@ __all__ = [
     "Variante",
     "TramiteDocumento",
     "TramiteEnlace",
+    "AgendaConfiguracion",
 ]
