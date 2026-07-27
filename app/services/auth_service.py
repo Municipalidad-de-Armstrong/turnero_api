@@ -122,13 +122,19 @@ class AuthService:
 
     async def blacklist_token(self, token: str) -> None:
         if self.redis:
-            ttl = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-            await self.redis.setex(f"blacklist:{token}", ttl, "true")
+            try:
+                ttl = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+                await self.redis.setex(f"blacklist:{token}", ttl, "true")
+            except Exception:
+                pass
 
     async def is_token_blacklisted(self, token: str) -> bool:
         if self.redis:
-            exists = await self.redis.exists(f"blacklist:{token}")
-            return bool(exists)
+            try:
+                exists = await self.redis.exists(f"blacklist:{token}")
+                return bool(exists)
+            except Exception:
+                return False
         return False
 
     async def create_password_reset_token(self, email: str) -> None:
