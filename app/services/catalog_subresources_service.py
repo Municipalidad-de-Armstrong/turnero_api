@@ -2,7 +2,7 @@ import os
 import uuid
 from typing import List
 from fastapi import HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -74,6 +74,16 @@ class CatalogSubresourcesService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Variante con id {variante_id} no encontrada",
             )
+        count_res = await db.execute(
+            select(func.count()).where(Variante.tramite_id == variante.tramite_id)
+        )
+        count = count_res.scalar() or 0
+        if count <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No se puede eliminar la única variante del trámite. Cada trámite debe conservar al menos una variante.",
+            )
+
         await db.delete(variante)
         await db.commit()
 

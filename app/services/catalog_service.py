@@ -9,6 +9,7 @@ from app.schemas.tramite import TramiteCreateRequest, TramiteUpdateRequest
 
 
 from sqlalchemy.orm import selectinload
+from app.models.variante import Variante
 
 
 class CatalogService:
@@ -80,7 +81,15 @@ class CatalogService:
         area_id: Optional[int] = None,
         search: Optional[str] = None,
     ) -> List[Tramite]:
-        query = select(Tramite).order_by(Tramite.nombre)
+        query = (
+            select(Tramite)
+            .options(
+                selectinload(Tramite.variantes),
+                selectinload(Tramite.documentos),
+                selectinload(Tramite.enlaces),
+            )
+            .order_by(Tramite.nombre)
+        )
         if area_id is not None:
             query = query.where(Tramite.area_id == area_id)
         if search:
@@ -127,6 +136,15 @@ class CatalogService:
             limite_sobreturnos_diarios=data.limite_sobreturnos_diarios,
         )
         db.add(tramite)
+        await db.flush()
+
+        variante_defecto = Variante(
+            tramite_id=tramite.id,
+            nombre="Atención General",
+            descripcion="Atención estándar del trámite",
+            duracion_minutos=15,
+        )
+        db.add(variante_defecto)
         await db.commit()
         await db.refresh(tramite)
         return tramite

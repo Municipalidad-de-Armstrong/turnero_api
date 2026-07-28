@@ -1,8 +1,10 @@
+from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, require_roles
+from app.schemas.availability import BloqueDisponibilidad
 from app.schemas.tramite import (
     TramiteCreateRequest,
     TramiteDetailResponse,
@@ -19,10 +21,12 @@ from app.schemas.variante import (
     VarianteResponse,
     VarianteUpdateRequest,
 )
+from app.services.availability_service import AvailabilityService
 from app.services.catalog_service import CatalogService
 from app.services.catalog_subresources_service import CatalogSubresourcesService
 
 router = APIRouter(tags=["Trámites"])
+
 
 
 # --- TRÁMITES ---
@@ -179,3 +183,34 @@ async def delete_tramite_enlace(
     _user=Depends(require_roles(["administrador", "administrativo"])),
 ):
     await CatalogSubresourcesService.delete_enlace(db, tramite_id, enlace_id)
+
+
+# --- DISPONIBILIDAD Y PRIMER TURNO ---
+@router.get(
+    "/tramites/{tramite_id}/disponibilidad",
+    response_model=List[BloqueDisponibilidad],
+)
+async def get_disponibilidad(
+    tramite_id: int,
+    fecha: date = Query(...),
+    variante_ids: List[int] = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AvailabilityService.get_disponibilidad(
+        db, tramite_id, fecha, variante_ids
+    )
+
+
+@router.get(
+    "/tramites/{tramite_id}/primer-turno-disponible",
+    response_model=BloqueDisponibilidad,
+)
+async def get_primer_turno_disponible(
+    tramite_id: int,
+    variante_ids: List[int] = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
+    return await AvailabilityService.get_primer_turno_disponible(
+        db, tramite_id, variante_ids
+    )
+
