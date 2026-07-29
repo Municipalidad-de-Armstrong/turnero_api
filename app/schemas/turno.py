@@ -1,0 +1,51 @@
+import uuid
+from datetime import datetime
+from typing import List, Optional
+from pydantic import BaseModel, Field, ConfigDict
+from app.schemas.variante import VarianteResponse
+
+
+class DatosRegistroInmediato(BaseModel):
+    dni: str = Field(..., min_length=7, max_length=20, description="DNI del ciudadano")
+    email: str = Field(..., description="Email del ciudadano")
+    telefono: str = Field(..., description="Teléfono del ciudadano")
+    nombre: str = Field(..., min_length=2, max_length=100, description="Nombre")
+    apellido: str = Field(..., min_length=2, max_length=100, description="Apellido")
+
+
+class TurnoCreateRequest(BaseModel):
+    tramite_id: int = Field(..., description="ID del trámite")
+    variante_ids: List[int] = Field(..., min_length=1, description="Lista de IDs de variantes a agendar")
+    fecha_hora_inicio: datetime = Field(..., description="Fecha y hora de inicio deseada en formato UTC / ISO")
+    ciudadano_id: Optional[int] = Field(None, description="Opcional. ID de ciudadano si es cargado por administrativo")
+    datos_registro_inmediato: Optional[DatosRegistroInmediato] = Field(
+        None, description="Opcional. Datos para registrar al ciudadano al vuelo si es cargado por administrativo"
+    )
+
+
+class TurnoUpdateRequest(BaseModel):
+    fecha_hora_inicio: Optional[datetime] = Field(None, description="Nueva fecha/hora para reprogramación")
+    variante_ids: Optional[List[int]] = Field(None, description="Nuevas variantes para reprogramación")
+    estado: Optional[str] = Field(None, description="Nuevo estado (RESERVADO, COMPLETO, INCOMPLETO, AUSENTE, CANCELADO)")
+    motivo_cancelacion: Optional[str] = Field(None, description="Motivo obligatorio si es cancelado por un administrativo")
+    resultado_comentario: Optional[str] = Field(None, description="Comentario del administrativo tras la atención")
+
+
+class TurnoResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    ciudadano_id: int
+    ciudadano_nombre_completo: Optional[str] = None
+    tramite_id: int
+    tramite_nombre: Optional[str] = None
+    fecha_hora_inicio: datetime
+    fecha_hora_fin: datetime
+    estado: str
+    es_sobreturno: bool
+    sobreturno_prioridad: Optional[str] = None
+    motivo_cancelacion: Optional[str] = None
+    cancelado_por_id: Optional[int] = None
+    resultado_comentario: Optional[str] = None
+    variantes: List[VarianteResponse] = []
+    created_at: datetime
