@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import admin_usurpations, agenda, areas, auth, health, tramites, turnos, users
 from app.core.config import settings
-from app.core.database import Base, async_session_maker, engine
+from app.core.database import async_session_maker
 from app.core.redis import close_redis_client
 from app.core.seed import seed_initial_data
 
@@ -14,9 +14,6 @@ from app.core.seed import seed_initial_data
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs(os.path.join("uploads", "tramites"), exist_ok=True)
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
     async with async_session_maker() as session:
         await seed_initial_data(session)
 
