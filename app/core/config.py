@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -42,9 +42,12 @@ class Settings(BaseSettings):
     # Redis 8
     REDIS_HOST: str = "localhost"
     REDIS_PORT: str = "6379"
+    REDIS_URL: Optional[str] = None
 
     @property
     def redis_url(self) -> str:
+        if self.REDIS_URL:
+            return self.REDIS_URL
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
     # JWT & Auth
