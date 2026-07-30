@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     # Cookie `Secure` flag: False en desarrollo (HTTP local), True en producción (HTTPS).
     # Cumple infraestructura-seguridad.md §3.1 (cookie Secure obligatoria).
     SESSION_COOKIE_SECURE: bool = False
+    SESSION_COOKIE_SAMESITE: str = "lax"
 
     # Password reset tokens (almacenados en Redis con TTL corto)
     PASSWORD_RESET_TOKEN_TTL_MINUTES: int = 15
