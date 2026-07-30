@@ -63,3 +63,23 @@ def test_jwt_creation_and_decoding():
     assert decoded["sub"] == "123"
     assert decoded["role"] == "ciudadano"
     assert "exp" in decoded
+
+
+def test_cors_origins_parsing():
+    from app.core.config import Settings
+
+    s1 = Settings(BACKEND_CORS_ORIGINS='["https://app.vercel.app"]')
+    assert s1.BACKEND_CORS_ORIGINS == ["https://app.vercel.app"]
+
+    s2 = Settings(BACKEND_CORS_ORIGINS="['https://app.vercel.app']")
+    assert s2.BACKEND_CORS_ORIGINS == ["https://app.vercel.app"]
+
+    s3 = Settings(BACKEND_CORS_ORIGINS="https://app.vercel.app")
+    assert s3.BACKEND_CORS_ORIGINS == ["https://app.vercel.app"]
+
+    s4 = Settings(BACKEND_CORS_ORIGINS="*")
+    assert s4.BACKEND_CORS_ORIGINS == ["*"]
+
+    s5 = Settings(BACKEND_CORS_ORIGINS="http://localhost:3000, https://app.vercel.app")
+    assert s5.BACKEND_CORS_ORIGINS == ["http://localhost:3000", "https://app.vercel.app"]
+
