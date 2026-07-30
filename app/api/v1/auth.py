@@ -37,12 +37,14 @@ async def login(
     user = await service.authenticate_user(req.email, req.password)
     token = await service.create_token_for_user(user)
 
+    samesite_val = "none" if settings.SESSION_COOKIE_SECURE else "lax"
+
     response.set_cookie(
         key=settings.SESSION_COOKIE_NAME,
         value=token,
         httponly=True,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        samesite="lax",
+        samesite=samesite_val,
         secure=settings.SESSION_COOKIE_SECURE,
     )
 
@@ -66,7 +68,12 @@ async def logout(
         service = AuthService(db, redis)
         await service.blacklist_token(token)
 
-    response.delete_cookie(key=settings.SESSION_COOKIE_NAME)
+    samesite_val = "none" if settings.SESSION_COOKIE_SECURE else "lax"
+    response.delete_cookie(
+        key=settings.SESSION_COOKIE_NAME,
+        samesite=samesite_val,
+        secure=settings.SESSION_COOKIE_SECURE,
+    )
     return {"detail": "Sesión cerrada correctamente."}
 
 
