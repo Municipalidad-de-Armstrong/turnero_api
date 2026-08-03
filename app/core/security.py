@@ -91,6 +91,14 @@ def hash_dni_hmac(dni: str) -> str:
     return hmac.new(salt_bytes, dni_bytes, hashlib.sha256).hexdigest()
 
 
+def hash_carnet_hmac(carnet: str) -> str:
+    """Generate a deterministic HMAC-SHA256 hash for carnet number indexing."""
+    cleaned = carnet.strip()
+    salt_bytes = settings.CARNET_HMAC_SALT.encode("utf-8")
+    carnet_bytes = cleaned.encode("utf-8")
+    return hmac.new(salt_bytes, carnet_bytes, hashlib.sha256).hexdigest()
+
+
 def mask_dni(dni: str) -> str:
     """Mask DNI format to XX.XXX.789 for non-administrative views."""
     cleaned = "".join(filter(str.isdigit, str(dni)))

@@ -83,6 +83,7 @@ class Settings(BaseSettings):
     # Fernet key must be 32 base64-encoded bytes
     PII_SECRET_KEY: str = "d3Z4eF9hYmNfZGVmX2doaV9qa2xfbW5vX3Bxcl9zdHV2d3g="
     DNI_HMAC_SALT: str = "armstrong_fixed_salt_for_dni_search_2026"
+    CARNET_HMAC_SALT: str = "armstrong_fixed_salt_for_carnet_search_2026"
 
     # Archivos estáticos (uploads de formularios PDF/DOCX)
     UPLOAD_DIR: str = "uploads"

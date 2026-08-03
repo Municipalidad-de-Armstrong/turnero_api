@@ -102,7 +102,7 @@ class AuthService:
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Credenciales inválidas.",
             )
-        if not user.activo or user.estado == "INACTIVE":
+        if not user.activo:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Usuario inactivo o suspendido por auditoría.",

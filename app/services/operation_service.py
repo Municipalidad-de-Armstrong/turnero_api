@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.security import hash_dni_hmac, encrypt_pii
+from app.core.security import hash_carnet_hmac, encrypt_pii
 from app.models.carnet import Carnet
 from app.models.tramite import Tramite
 from app.models.turno import Turno
@@ -139,7 +139,7 @@ class OperationService:
 
             num_carnet_raw = data.numero_carnet.strip()
             num_carnet_cifrado = encrypt_pii(num_carnet_raw)
-            num_carnet_hmac = hash_dni_hmac(num_carnet_raw)
+            num_carnet_hmac = hash_carnet_hmac(num_carnet_raw)
 
             carnet = Carnet(
                 ciudadano_id=turno.ciudadano_id,
