@@ -8,6 +8,23 @@ from cryptography.fernet import Fernet
 import bcrypt
 from app.core.config import settings
 
+_fernet_instance: Optional[Fernet] = None
+
+
+def _get_fernet() -> Fernet:
+    global _fernet_instance
+    if _fernet_instance is not None:
+        return _fernet_instance
+    key = settings.PII_SECRET_KEY
+    if isinstance(key, str):
+        key_bytes = key.encode("utf-8")
+    else:
+        key_bytes = key
+    if len(key_bytes) != 44:
+        key_bytes = base64.urlsafe_b64encode(hashlib.sha256(key_bytes).digest())
+    _fernet_instance = Fernet(key_bytes)
+    return _fernet_instance
+
 
 def hash_password(password: str) -> str:
     """Hash a plain text password using bcrypt."""
@@ -46,18 +63,6 @@ def decode_access_token(token: str) -> Dict[str, Any]:
     return jwt.decode(
         token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM]
     )
-
-
-def _get_fernet() -> Fernet:
-    """Helper to initialize Fernet cipher using configured PII secret key."""
-    key = settings.PII_SECRET_KEY
-    if isinstance(key, str):
-        key_bytes = key.encode("utf-8")
-    else:
-        key_bytes = key
-    if len(key_bytes) != 44:
-        key_bytes = base64.urlsafe_b64encode(hashlib.sha256(key_bytes).digest())
-    return Fernet(key_bytes)
 
 
 def encrypt_pii(plain_text: str) -> str:

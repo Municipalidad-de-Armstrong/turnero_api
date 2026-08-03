@@ -6,6 +6,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.security import decrypt_pii
 from app.models.agenda_configuracion import AgendaConfiguracion
 from app.models.tramite import Tramite
 from app.models.turno import Turno
@@ -14,28 +15,53 @@ from app.schemas.turno import TurnoCreateRequest, TurnoResponse, TurnoUpdateRequ
 from app.services.availability_service import AvailabilityService, LOCAL_TZ
 
 
-class TurnoService:
-    @classmethod
-    def _to_response(cls, turno: Turno) -> TurnoResponse:
-        ciudadano_nombre = f"{turno.ciudadano.nombre} {turno.ciudadano.apellido}" if turno.ciudadano else None
-        tramite_nombre = turno.tramite.nombre if turno.tramite else None
-        return TurnoResponse(
-            id=turno.id,
-            ciudadano_id=turno.ciudadano_id,
-            ciudadano_nombre_completo=ciudadano_nombre,
-            tramite_id=turno.tramite_id,
-            tramite_nombre=tramite_nombre,
-            fecha_hora_inicio=turno.fecha_hora_inicio,
-            fecha_hora_fin=turno.fecha_hora_fin,
-            estado=turno.estado,
-            es_sobreturno=turno.es_sobreturno if turno.es_sobreturno is not None else False,
-            sobreturno_prioridad=turno.sobreturno_prioridad,
-            motivo_cancelacion=turno.motivo_cancelacion,
-            cancelado_por_id=turno.cancelado_por_id,
-            resultado_comentario=turno.resultado_comentario,
-            variantes=list(turno.variantes) if turno.variantes else [],
-            created_at=turno.created_at or datetime.now(timezone.utc),
+def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
+    ciudadano_nombre = (
+        f"{turno.ciudadano.nombre} {turno.ciudadano.apellido}"
+        if turno.ciudadano
+        else None
+    )
+    tramite_nombre = turno.tramite.nombre if turno.tramite else None
+    emite_carnet = turno.tramite.emite_carnet if turno.tramite else None
+
+    if include_pii:
+        dni_val = (
+            decrypt_pii(turno.ciudadano.dni_cifrado)
+            if (turno.ciudadano and turno.ciudadano.dni_cifrado)
+            else None
         )
+        phone_val = (
+            decrypt_pii(turno.ciudadano.telefono_cifrado)
+            if (turno.ciudadano and turno.ciudadano.telefono_cifrado)
+            else None
+        )
+    else:
+        dni_val = None
+        phone_val = None
+
+    return TurnoResponse(
+        id=turno.id,
+        ciudadano_id=turno.ciudadano_id,
+        ciudadano_nombre_completo=ciudadano_nombre,
+        ciudadano_dni=dni_val,
+        ciudadano_telefono=phone_val,
+        tramite_id=turno.tramite_id,
+        tramite_nombre=tramite_nombre,
+        emite_carnet=emite_carnet,
+        fecha_hora_inicio=turno.fecha_hora_inicio,
+        fecha_hora_fin=turno.fecha_hora_fin,
+        estado=turno.estado,
+        es_sobreturno=turno.es_sobreturno if turno.es_sobreturno is not None else False,
+        sobreturno_prioridad=turno.sobreturno_prioridad,
+        motivo_cancelacion=turno.motivo_cancelacion,
+        cancelado_por_id=turno.cancelado_por_id,
+        resultado_comentario=turno.resultado_comentario,
+        variantes=list(turno.variantes) if turno.variantes else [],
+        created_at=turno.created_at or datetime.now(timezone.utc),
+    )
+
+
+class TurnoService:
 
     @classmethod
     async def create_turno(
@@ -156,7 +182,7 @@ class TurnoService:
                 detail="No tiene permisos para acceder a este turno.",
             )
 
-        return cls._to_response(turno)
+        return turno_to_response(turno)
 
     @classmethod
     async def list_turnos(
@@ -196,7 +222,7 @@ class TurnoService:
         stmt = stmt.order_by(Turno.fecha_hora_inicio.desc())
         res = await db.execute(stmt)
         turnos = res.scalars().all()
-        return [cls._to_response(t) for t in turnos]
+        return [turno_to_response(t) for t in turnos]
 
     @classmethod
     async def cancel_turno(
@@ -250,7 +276,7 @@ class TurnoService:
 
         await db.commit()
         await db.refresh(turno)
-        return cls._to_response(turno)
+        return turno_to_response(turno)
 
     @classmethod
     async def update_turno(
@@ -358,4 +384,4 @@ class TurnoService:
 
         await db.commit()
         await db.refresh(turno)
-        return cls._to_response(turno)
+        return turno_to_response(turno)

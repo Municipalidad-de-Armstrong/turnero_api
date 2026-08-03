@@ -1,9 +1,10 @@
 from typing import List, Optional
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.area import Area
 from app.models.tramite import Tramite
+from app.models.turno import Turno
 from app.schemas.area import AreaCreateRequest, AreaUpdateRequest
 from app.schemas.tramite import TramiteCreateRequest, TramiteUpdateRequest
 
@@ -173,5 +174,15 @@ class CatalogService:
     @staticmethod
     async def delete_tramite(db: AsyncSession, tramite_id: int) -> None:
         tramite = await CatalogService.get_tramite_by_id(db, tramite_id)
+
+        turnos_count = await db.scalar(
+            select(func.count()).select_from(Turno).where(Turno.tramite_id == tramite_id)
+        )
+        if turnos_count and turnos_count > 0:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No se puede eliminar el trámite porque posee turnos asociados.",
+            )
+
         await db.delete(tramite)
         await db.commit()

@@ -1,3 +1,4 @@
+import logging
 import os
 import uuid
 from typing import List
@@ -6,13 +7,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.uploads import fs_path_to_url
+from app.core.uploads import fs_path_to_url, url_to_fs_path
 from app.models.tramite import Tramite
 from app.models.tramite_documento import TramiteDocumento
 from app.models.tramite_enlace import TramiteEnlace
 from app.models.variante import Variante
 from app.schemas.tramite_enlace import TramiteEnlaceCreateRequest
 from app.schemas.variante import VarianteCreateRequest, VarianteUpdateRequest
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".doc"}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -132,14 +135,19 @@ class CatalogSubresourcesService:
         with open(file_path, "wb") as f:
             f.write(content)
 
-        # URL pública derivada del path FS (centralizada en app.core.uploads) para que
-        # el listener de borrado pueda reconstruir correctamente el path de disco.
         public_url = fs_path_to_url(file_path)
         doc = TramiteDocumento(
             tramite_id=tramite_id, nombre=nombre, ruta_archivo=public_url
         )
         db.add(doc)
-        await db.commit()
+        try:
+            await db.commit()
+        except Exception:
+            try:
+                os.remove(file_path)
+            except OSError:
+                logger.warning("No se pudo borrar el archivo huérfano: %s", file_path)
+            raise
         await db.refresh(doc)
         return doc
 
@@ -159,8 +167,14 @@ class CatalogSubresourcesService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Documento con id {documento_id} no encontrado para el trámite {tramite_id}",
             )
+        fs_path = url_to_fs_path(doc.ruta_archivo)
         await db.delete(doc)
         await db.commit()
+        if fs_path:
+            try:
+                os.remove(fs_path)
+            except OSError:
+                logger.warning("No se pudo borrar el archivo en disco: %s", fs_path)
 
     # --- ENLACES ÚTILES ---
     @staticmethod

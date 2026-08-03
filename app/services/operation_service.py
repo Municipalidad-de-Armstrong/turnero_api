@@ -6,56 +6,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.security import decrypt_pii, hash_dni_hmac, encrypt_pii
+from app.core.security import hash_dni_hmac, encrypt_pii
 from app.models.carnet import Carnet
 from app.models.tramite import Tramite
 from app.models.turno import Turno
 from app.models.user import User
 from app.schemas.turno import TurnoResponse, TurnoResultadoRequest
 from app.services.availability_service import LOCAL_TZ
+from app.services.turno_service import turno_to_response
 
 
 class OperationService:
-    @classmethod
-    def _map_turno_response(cls, turno: Turno) -> TurnoResponse:
-        ciudadano_nombre = (
-            f"{turno.ciudadano.nombre} {turno.ciudadano.apellido}"
-            if turno.ciudadano
-            else None
-        )
-        dni_decrypted = (
-            decrypt_pii(turno.ciudadano.dni_cifrado)
-            if (turno.ciudadano and turno.ciudadano.dni_cifrado)
-            else None
-        )
-        phone_decrypted = (
-            decrypt_pii(turno.ciudadano.telefono_cifrado)
-            if (turno.ciudadano and turno.ciudadano.telefono_cifrado)
-            else None
-        )
-        tramite_nombre = turno.tramite.nombre if turno.tramite else None
-        emite_carnet = turno.tramite.emite_carnet if turno.tramite else None
-
-        return TurnoResponse(
-            id=turno.id,
-            ciudadano_id=turno.ciudadano_id,
-            ciudadano_nombre_completo=ciudadano_nombre,
-            ciudadano_dni=dni_decrypted,
-            ciudadano_telefono=phone_decrypted,
-            tramite_id=turno.tramite_id,
-            tramite_nombre=tramite_nombre,
-            emite_carnet=emite_carnet,
-            fecha_hora_inicio=turno.fecha_hora_inicio,
-            fecha_hora_fin=turno.fecha_hora_fin,
-            estado=turno.estado,
-            es_sobreturno=turno.es_sobreturno if turno.es_sobreturno is not None else False,
-            sobreturno_prioridad=turno.sobreturno_prioridad,
-            motivo_cancelacion=turno.motivo_cancelacion,
-            cancelado_por_id=turno.cancelado_por_id,
-            resultado_comentario=turno.resultado_comentario,
-            variantes=list(turno.variantes) if turno.variantes else [],
-            created_at=turno.created_at or datetime.now(timezone.utc),
-        )
 
     @classmethod
     async def get_cola_dia(
@@ -107,7 +68,7 @@ class OperationService:
         )
 
         sorted_turnos = regulares + sobreturnos
-        return [cls._map_turno_response(t) for t in sorted_turnos]
+        return [turno_to_response(t, include_pii=True) for t in sorted_turnos]
 
     @classmethod
     async def registrar_resultado_turno(
@@ -125,6 +86,7 @@ class OperationService:
                 selectinload(Turno.variantes),
             )
             .where(Turno.id == turno_id)
+            .with_for_update()
         )
         res = await db.execute(stmt)
         turno = res.scalar_one_or_none()
@@ -196,4 +158,4 @@ class OperationService:
 
         await db.commit()
         await db.refresh(turno)
-        return cls._map_turno_response(turno)
+        return turno_to_response(turno, include_pii=True)

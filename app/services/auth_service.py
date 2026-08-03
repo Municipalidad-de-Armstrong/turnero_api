@@ -58,9 +58,10 @@ class AuthService:
         res_role = await self.db.execute(stmt_role)
         role = res_role.scalar_one_or_none()
         if not role:
-            role = Role(id=1, nombre="ciudadano", descripcion="Ciudadano solicitante")
-            self.db.add(role)
-            await self.db.flush()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Configuración del sistema incompleta. Contacte al administrador.",
+            )
 
         user = User(
             nombre=req.nombre,
@@ -223,10 +224,9 @@ class AuthService:
         En DEV se imprime en consola/logs para permitir probar el flujo E2E. El envío
         real por SMTP STARTTLS asíncrono (Celery) se implementa en el Slice 10.
         """
-        # TODO(Slice 10): enviar por SMTP STARTTLS/Celery en lugar de log/print.
+        # TODO(Slice 10): enviar por SMTP STARTTLS/Celery en lugar de log.
         if settings.is_development:
             logger.info("DEV password reset link para %s: %s", email, reset_link)
-            print(f"[DEV] Link de reseteo de contraseña para {email}: {reset_link}")
         else:
             logger.info("Token de reseteo emitido para %s (envío SMTP pendiente).", email)
 
