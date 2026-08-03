@@ -31,14 +31,24 @@ class TurnoUpdateRequest(BaseModel):
     resultado_comentario: Optional[str] = Field(None, description="Comentario del administrativo tras la atención")
 
 
+class TurnoResultadoRequest(BaseModel):
+    estado: str = Field(..., description="Nuevo estado del turno: COMPLETO, INCOMPLETO, AUSENTE")
+    resultado_comentario: Optional[str] = Field(None, description="Notas del operador. Obligatorio si es INCOMPLETO")
+    numero_carnet: Optional[str] = Field(None, description="Número de carnet. Obligatorio si el trámite emite carnet y estado es COMPLETO")
+    fecha_vencimiento: Optional[str] = Field(None, description="Fecha de vencimiento en formato YYYY-MM-DD. Obligatorio si emite carnet y COMPLETO")
+
+
 class TurnoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
     ciudadano_id: int
     ciudadano_nombre_completo: Optional[str] = None
+    ciudadano_dni: Optional[str] = None
+    ciudadano_telefono: Optional[str] = None
     tramite_id: int
     tramite_nombre: Optional[str] = None
+    emite_carnet: Optional[bool] = None
     fecha_hora_inicio: datetime
     fecha_hora_fin: datetime
     estado: str
@@ -49,3 +59,4 @@ class TurnoResponse(BaseModel):
     resultado_comentario: Optional[str] = None
     variantes: List[VarianteResponse] = []
     created_at: datetime
+

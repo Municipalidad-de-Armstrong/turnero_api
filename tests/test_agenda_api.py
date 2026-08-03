@@ -80,6 +80,7 @@ async def test_agenda_service_save_and_cache(mock_get_redis):
     mock_get_redis.return_value = redis_mock
 
     db = AsyncMock()
+    db.add_all = MagicMock()
     mock_tramite = MagicMock()
     mock_tramite.scalar_one_or_none.return_value = Tramite(id=1, nombre="Licencia")
 

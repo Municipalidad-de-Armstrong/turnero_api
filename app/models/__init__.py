@@ -9,6 +9,7 @@ from app.models.tramite_documento import TramiteDocumento
 from app.models.tramite_enlace import TramiteEnlace
 from app.models.agenda_configuracion import AgendaConfiguracion
 from app.models.turno import Turno, turno_variante_table
+from app.models.carnet import Carnet
 
 __all__ = [
     "Base",
@@ -23,5 +24,6 @@ __all__ = [
     "AgendaConfiguracion",
     "Turno",
     "turno_variante_table",
+    "Carnet",
 ]
 
