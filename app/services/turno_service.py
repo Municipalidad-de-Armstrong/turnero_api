@@ -57,7 +57,7 @@ def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
         cancelado_por_id=turno.cancelado_por_id,
         resultado_comentario=turno.resultado_comentario,
         variantes=list(turno.variantes) if turno.variantes else [],
-        created_at=turno.created_at or datetime.now(timezone.utc),
+        created_at=turno.created_at,
     )
 
 
@@ -210,7 +210,7 @@ class TurnoService:
             if fecha_hasta:
                 filters.append(Turno.fecha_hora_inicio <= fecha_hasta)
             if area_id:
-                stmt = stmt.join(Tramite).where(Tramite.area_id == area_id)
+                stmt = stmt.join(Turno.tramite).where(Tramite.area_id == area_id)
             if estado:
                 filters.append(Turno.estado == estado)
             if es_sobreturno is not None:
