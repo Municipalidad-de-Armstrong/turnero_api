@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -17,13 +18,47 @@ from app.api.v1 import (
 )
 from app.core.config import settings
 from app.core.database import async_session_maker
-from app.core.redis import close_redis_client
+from app.core.redis import close_redis_client, get_redis_client, redis_kind
 from app.core.seed import seed_initial_data
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs(os.path.join("uploads", "tramites"), exist_ok=True)
+
+    # Inicializa el cliente Redis según entorno:
+    # - producción: Redis real obligatorio. Si no responde, aborta el arranque
+    #   (fail-fast) para no servir tráfico sin servicio de sesiones.
+    # - desarrollo: usa Redis real si está; si no, mock en memoria.
+    try:
+        client = await get_redis_client()
+        # PING real para validar conectividad. En prod el cliente es perezoso,
+        # así que sin esto arrancaría aunque Redis no exista. El mock en dev
+        # implementa ping() y devuelve True.
+        await client.ping()
+    except Exception:
+        if settings.is_production:
+            logger.critical(
+                "No se pudo conectar a Redis en producción. Abortando arranque."
+            )
+            raise
+        logger.warning("Redis no disponible en desarrollo: modo degradado.", exc_info=True)
+
+    if settings.is_production and redis_kind() != "real":
+        # Salvaguarda: get_redis_client() no debería devolver mock en prod, pero
+        # reforzamos el contrato por si cambia la lógica de selección.
+        raise RuntimeError(
+            "En producción Redis es obligatorio y no se puede usar el mock en memoria."
+        )
+
+    if settings.is_development and redis_kind() == "memory":
+        logger.warning(
+            "Arrancando en DEV con mock Redis en memoria: logout/blacklist/reset "
+            "NO persisten entre reinicios."
+        )
+
     async with async_session_maker() as session:
         await seed_initial_data(session)
 

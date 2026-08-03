@@ -13,8 +13,9 @@ from app.models.user import User
 
 
 async def get_redis() -> AsyncGenerator[Optional[aioredis.Redis], None]:
-    """Devuelve el cliente Redis global reutilizando el pool de conexiones."""
-    yield get_redis_client()
+    """Devuelve el cliente Redis global (real o mock en dev), lazy-inicializado."""
+    client = await get_redis_client()
+    yield client
 
 
 async def get_current_user(
@@ -45,7 +46,14 @@ async def get_current_user(
         except HTTPException:
             raise
         except Exception:
-            pass
+            # En producción Redis es mandatorio: un error aquí debe impedir el
+            # acceso (fail-closed) en vez de dejar pasar el token. En dev se
+            # tolera (el mock en memoria nunca entra acá).
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de sesiones no disponible.",
+                )
 
     try:
         payload = decode_access_token(token)

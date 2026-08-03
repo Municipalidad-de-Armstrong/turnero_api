@@ -73,7 +73,7 @@ async def test_agenda_service_duplicate_days():
 
 
 @pytest.mark.asyncio
-@patch("app.services.agenda_service.get_redis_client")
+@patch("app.services.agenda_service.get_redis_client", new_callable=AsyncMock)
 async def test_agenda_service_save_and_cache(mock_get_redis):
     """Valida que la creación/actualización guarde en DB y limpie el caché Redis."""
     redis_mock = AsyncMock()

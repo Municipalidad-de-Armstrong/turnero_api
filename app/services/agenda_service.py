@@ -1,12 +1,16 @@
 import json
+import logging
 from typing import List
 from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import settings
 from app.core.redis import get_redis_client
 from app.models.agenda_configuracion import AgendaConfiguracion
 from app.models.tramite import Tramite
 from app.schemas.agenda import AgendaConfigSaveItem, AgendaConfigResponse
+
+logger = logging.getLogger(__name__)
 
 
 class AgendaService:
@@ -22,13 +26,18 @@ class AgendaService:
 
         redis_key = f"agenda_config:{tramite_id}"
         try:
-            redis = get_redis_client()
+            redis = await get_redis_client()
             cached_data = await redis.get(redis_key)
             if cached_data:
                 items_dict = json.loads(cached_data)
                 return [AgendaConfiguracion(**item) for item in items_dict]
         except Exception:
-            pass
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de caché no disponible.",
+                )
+            logger.warning("Redis caído en dev: lectura de caché agenda ignorada.", exc_info=True)
 
         result = await db.execute(
             select(AgendaConfiguracion)
@@ -38,13 +47,18 @@ class AgendaService:
         items = list(result.scalars().all())
 
         try:
-            redis = get_redis_client()
+            redis = await get_redis_client()
             serialized = [
                 AgendaConfigResponse.model_validate(item).model_dump() for item in items
             ]
             await redis.set(redis_key, json.dumps(serialized), ex=3600)
         except Exception:
-            pass
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de caché no disponible.",
+                )
+            logger.warning("Redis caído en dev: escritura de caché agenda ignorada.", exc_info=True)
 
         return items
 
@@ -87,11 +101,16 @@ class AgendaService:
         await db.commit()
 
         try:
-            redis = get_redis_client()
+            redis = await get_redis_client()
             redis_key = f"agenda_config:{tramite_id}"
             await redis.delete(redis_key)
         except Exception:
-            pass
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de caché no disponible.",
+                )
+            logger.warning("Redis caído en dev: invalidación de caché agenda ignorada.", exc_info=True)
 
         result = await db.execute(
             select(AgendaConfiguracion)

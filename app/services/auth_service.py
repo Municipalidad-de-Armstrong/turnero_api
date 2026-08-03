@@ -121,21 +121,54 @@ class AuthService:
         return create_access_token(payload)
 
     async def blacklist_token(self, token: str) -> None:
-        if self.redis:
-            try:
-                ttl = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-                await self.redis.setex(f"blacklist:{token}", ttl, "true")
-            except Exception:
-                pass
+        """Revoca un JWT guardándolo en la blacklist de Redis con TTL = vida del token.
+
+        En **producción** Redis es obligatorio: si la escritura falla, el error se
+        propaga (no tiene sentido un logout silenciosamente fallido). En **dev**
+        (con el mock en memoria) los errores se ignoran para no romper flujos.
+        """
+        if not self.redis:
+            # En dev sin Redis esto no debería ocurrir (el mock siempre está),
+            # pero por robustez: no romper el logout por esto.
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de sesiones no disponible.",
+                )
+            return
+
+        ttl = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+        try:
+            await self.redis.setex(f"blacklist:{token}", ttl, "true")
+        except Exception:
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de sesiones no disponible.",
+                )
+            logger.warning("Redis caído en dev: blacklist_token ignorado.", exc_info=True)
 
     async def is_token_blacklisted(self, token: str) -> bool:
-        if self.redis:
-            try:
-                exists = await self.redis.exists(f"blacklist:{token}")
-                return bool(exists)
-            except Exception:
-                return False
-        return False
+        """Dice si un token fue revocado. En prod propaga errores de Redis."""
+        if not self.redis:
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de sesiones no disponible.",
+                )
+            return False
+
+        try:
+            exists = await self.redis.exists(f"blacklist:{token}")
+            return bool(exists)
+        except Exception:
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Servicio de sesiones no disponible.",
+                )
+            logger.warning("Redis caído en dev: is_token_blacklisted -> False.", exc_info=True)
+            return False
 
     async def create_password_reset_token(self, email: str) -> None:
         """Genera un token opaco de reseteo y lo persiste en Redis con TTL corto.
@@ -146,9 +179,15 @@ class AuthService:
         Slice 10 (notifications) vía Celery.
         """
         if not self.redis:
-            # Sin Redis no se puede validar el token; se omite silenciosamente para
-            # preservar la respuesta anti-enumeración (siempre 200).
-            logger.warning("Redis no disponible: no se pudo emitir token de reseteo.")
+            # Sin Redis no se puede validar el token. En dev se omite silenciosamente
+            # (preserva respuesta anti-enumeración); en prod no debería llegar aquí
+            # porque el lifespan exige Redis.
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="El servicio de recuperación de contraseña no está disponible.",
+                )
+            logger.warning("Redis no disponible en dev: no se emitió token de reseteo.")
             return
 
         stmt = select(User).where(User.email == email)
@@ -160,9 +199,18 @@ class AuthService:
 
         token = secrets.token_urlsafe(32)
         ttl = settings.PASSWORD_RESET_TOKEN_TTL_MINUTES * 60
-        await self.redis.setex(
-            f"{PASSWORD_RESET_KEY_PREFIX}:{token}", ttl, str(user.id)
-        )
+        try:
+            await self.redis.setex(
+                f"{PASSWORD_RESET_KEY_PREFIX}:{token}", ttl, str(user.id)
+            )
+        except Exception:
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="El servicio de recuperación de contraseña no está disponible.",
+                )
+            logger.warning("Redis caído en dev: no se emitió token de reseteo.", exc_info=True)
+            return
 
         reset_link = (
             f"{settings.APP_BASE_URL.rstrip('/')}/auth/resetear-password?token={token}"
@@ -176,7 +224,7 @@ class AuthService:
         real por SMTP STARTTLS asíncrono (Celery) se implementa en el Slice 10.
         """
         # TODO(Slice 10): enviar por SMTP STARTTLS/Celery en lugar de log/print.
-        if settings.ENVIRONMENT == "development":
+        if settings.is_development:
             logger.info("DEV password reset link para %s: %s", email, reset_link)
             print(f"[DEV] Link de reseteo de contraseña para {email}: {reset_link}")
         else:
@@ -192,7 +240,19 @@ class AuthService:
             )
 
         key = f"{PASSWORD_RESET_KEY_PREFIX}:{token}"
-        user_id_raw = await self.redis.get(key)
+        try:
+            user_id_raw = await self.redis.get(key)
+        except Exception:
+            if settings.is_production:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="El servicio de recuperación de contraseña no está disponible.",
+                )
+            logger.warning("Redis caído en dev: apply_password_reset -> 503.", exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="El servicio de recuperación de contraseña no está disponible.",
+            )
         if not user_id_raw:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -219,7 +279,18 @@ class AuthService:
         user.password_hash = hash_password(new_password)
         await self.db.commit()
         # Single-use: el token ya no sirve para un nuevo reseteo.
-        await self.redis.delete(key)
+        try:
+            await self.redis.delete(key)
+        except Exception:
+            if settings.is_production:
+                # El commit ya se hizo; no revertimos la password por esto, pero
+                # dejamos registro para investigar. El token quedó activo (reusable).
+                logger.error(
+                    "Redis cayó tras aplicar reset de password para user_id=%s. "
+                    "El token NO se consumió (queda reusable).", user_id, exc_info=True
+                )
+            else:
+                logger.warning("Redis caído en dev: token de reseteo no consumido.", exc_info=True)
 
     async def create_usurpation_report(
         self, req: UsurpationReportCreate

@@ -2,6 +2,16 @@ from unittest.mock import AsyncMock, patch
 import pytest
 from httpx import AsyncClient
 
+from app.core.config import settings
+
+
+@pytest.fixture(autouse=True)
+def _force_production_env(monkeypatch):
+    """El health check solo hace ping directo a Redis (vía ``aioredis.from_url``)
+    en producción. Para que los patches de ``aioredis.from_url`` funcionen,
+    forzamos ``ENVIRONMENT=production`` en toda la suite de health."""
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+
 
 @pytest.mark.asyncio
 async def test_health_check_healthy(client: AsyncClient):

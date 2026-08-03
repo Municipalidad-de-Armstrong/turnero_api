@@ -94,5 +94,17 @@ class Settings(BaseSettings):
         case_sensitive=True,
     )
 
+    # ---- Helpers de entorno ----
+    # Centraliza la pregunta "¿estamos en prod?" para que el resto del código
+    # no repita comparaciones mágicas contra ENVIRONMENT. En producción Redis es
+    # obligatorio; en dev se tolera su ausencia con un mock en memoria.
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.lower().strip() == "production"
+
+    @property
+    def is_development(self) -> bool:
+        return self.ENVIRONMENT.lower().strip() == "development"
+
 
 settings = Settings()
