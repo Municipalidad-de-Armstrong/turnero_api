@@ -128,6 +128,22 @@ class CatalogSubresourcesService:
                 detail="El archivo excede el tamaño máximo permitido de 10 MB.",
             )
 
+        if ext == ".pdf" and not content.startswith(b"%PDF-"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El contenido del archivo no coincide con la firma binaria de un documento PDF.",
+            )
+        if ext == ".docx" and not content.startswith(b"PK\x03\x04"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El contenido del archivo no coincide con la firma binaria de un documento DOCX.",
+            )
+        if ext == ".doc" and not content.startswith(b"\xd0\xcf\x11\xe0"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El contenido del archivo no coincide con la firma binaria de un documento DOC.",
+            )
+
         os.makedirs(UPLOADS_DIR, exist_ok=True)
         unique_name = f"{uuid.uuid4().hex}{ext}"
         file_path = os.path.join(UPLOADS_DIR, unique_name)

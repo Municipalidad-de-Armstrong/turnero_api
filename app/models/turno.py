@@ -6,6 +6,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Table,
@@ -36,6 +37,17 @@ turno_variante_table = Table(
 
 class Turno(Base):
     __tablename__ = "turnos"
+    __table_args__ = (
+        Index(
+            "idx_turnos_disponibilidad",
+            "tramite_id",
+            "fecha_hora_inicio",
+            "fecha_hora_fin",
+            "estado",
+        ),
+        Index("idx_turnos_ciudadano", "ciudadano_id", "fecha_hora_inicio"),
+        Index("idx_turnos_fecha", "fecha_hora_inicio"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4

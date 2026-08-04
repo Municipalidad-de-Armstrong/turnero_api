@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_redis
 from app.core.config import settings
+from app.core.rate_limit import RateLimiter
 from app.schemas.auth import (
     PasswordRecoveryRequest,
     PasswordResetRequest,
@@ -14,9 +15,15 @@ from app.schemas.auth import (
 from app.services.auth_service import AuthService
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
+auth_limiter = RateLimiter(max_requests=10, window_seconds=60)
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=UserResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(auth_limiter)],
+)
 async def register(
     req: UserRegisterRequest,
     db: AsyncSession = Depends(get_db),
@@ -26,7 +33,7 @@ async def register(
     return await service.register_user(req)
 
 
-@router.post("/tokens")
+@router.post("/tokens", dependencies=[Depends(auth_limiter)])
 async def login(
     req: UserLoginRequest,
     response: Response,
