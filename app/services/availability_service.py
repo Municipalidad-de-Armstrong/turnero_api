@@ -14,6 +14,15 @@ from app.schemas.availability import BloqueDisponibilidad
 LOCAL_TZ = ZoneInfo("America/Argentina/Buenos_Aires")
 
 
+def _min_booking_time() -> datetime:
+    now_local = datetime.now(LOCAL_TZ)
+    now_plus_2h = now_local + timedelta(hours=2)
+    tomorrow_midnight = datetime.combine(
+        now_local.date() + timedelta(days=1), time(0, 0), tzinfo=LOCAL_TZ
+    )
+    return max(now_plus_2h, tomorrow_midnight).astimezone(timezone.utc)
+
+
 class AvailabilityService:
     @staticmethod
     def _python_to_db_weekday(fecha: date) -> int:
@@ -101,6 +110,7 @@ class AvailabilityService:
         current_start = dt_start
         step = timedelta(minutes=15)
         duracion_td = timedelta(minutes=duracion_total)
+        min_booking = _min_booking_time()
 
         while current_start + duracion_td <= dt_end:
             slot_end = current_start + duracion_td
@@ -109,7 +119,10 @@ class AvailabilityService:
                 if t.fecha_hora_inicio < slot_end and t.fecha_hora_fin > current_start
             ]
 
-            disponible = len(overlapping) < agenda.capacidad_simultanea
+            disponible = (
+                current_start >= min_booking
+                and len(overlapping) < agenda.capacidad_simultanea
+            )
             bloques.append(
                 BloqueDisponibilidad(
                     fecha_hora_inicio=current_start,
@@ -127,7 +140,7 @@ class AvailabilityService:
     ) -> BloqueDisponibilidad:
         await cls.validate_tramite_and_variantes(db, tramite_id, variante_ids)
         today = datetime.now(LOCAL_TZ).date()
-        now_dt = datetime.now(timezone.utc)
+        min_booking = _min_booking_time()
 
         for day_offset in range(30):
             target_date = today + timedelta(days=day_offset)
@@ -135,7 +148,7 @@ class AvailabilityService:
                 db, tramite_id, target_date, variante_ids
             )
             for bloque in bloques:
-                if bloque.disponible and bloque.fecha_hora_inicio > now_dt + timedelta(minutes=10):
+                if bloque.disponible and bloque.fecha_hora_inicio >= min_booking:
                     return bloque
 
         raise HTTPException(

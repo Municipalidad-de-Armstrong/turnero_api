@@ -63,7 +63,7 @@ async def test_get_disponibilidad_no_agenda():
     db.execute.side_effect = [mock_tramite, mock_vars, mock_agenda]
 
     res = await AvailabilityService.get_disponibilidad(
-        db, 1, date(2026, 7, 27), [10]
+        db, 1, date(2026, 8, 10), [10]
     )
     assert res == []
 
@@ -91,8 +91,8 @@ async def test_get_disponibilidad_with_capacity_and_overlap():
     mock_agenda.scalar_one_or_none.return_value = agenda_obj
 
     # Existing turno from 08:00 to 08:30 (local time)
-    t_start = datetime(2026, 7, 27, 8, 0, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
-    t_end = datetime(2026, 7, 27, 8, 30, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+    t_start = datetime(2026, 8, 10, 8, 0, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+    t_end = datetime(2026, 8, 10, 8, 30, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
     existing_turno = Turno(
         tramite_id=1,
         fecha_hora_inicio=t_start,
@@ -112,7 +112,7 @@ async def test_get_disponibilidad_with_capacity_and_overlap():
     ]
 
     res = await AvailabilityService.get_disponibilidad(
-        db, 1, date(2026, 7, 27), [10]
+        db, 1, date(2026, 8, 10), [10]
     )
 
     # 08:00-08:30 (occupied by capacity 1 -> disponible False)

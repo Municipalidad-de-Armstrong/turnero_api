@@ -193,7 +193,7 @@ async def delete_tramite_enlace(
 async def get_disponibilidad(
     tramite_id: int,
     fecha: date = Query(...),
-    variante_ids: List[int] = Query(...),
+    variante_ids: List[int] = Query(default=[]),
     db: AsyncSession = Depends(get_db),
 ):
     return await AvailabilityService.get_disponibilidad(
@@ -207,7 +207,7 @@ async def get_disponibilidad(
 )
 async def get_primer_turno_disponible(
     tramite_id: int,
-    variante_ids: List[int] = Query(...),
+    variante_ids: List[int] = Query(default=[]),
     db: AsyncSession = Depends(get_db),
 ):
     return await AvailabilityService.get_primer_turno_disponible(

@@ -97,7 +97,13 @@ async def seed_catalog(
             "requerimientos_previos": "No poseer causas contravencionales pendientes.",
             "emite_carnet": False,
             "limite_sobreturnos_diarios": 10,
-            "variantes": [],
+            "variantes": [
+                {
+                    "nombre": "Emisión de Certificado de Libre Deuda",
+                    "descripcion": "Verificación contravencional y emisión de certificado.",
+                    "duracion_minutos": 15,
+                }
+            ],
             "enlaces": [],
             "documentos": [],
         },
@@ -205,6 +211,21 @@ async def seed_catalog(
                 await session.commit()
                 await session.refresh(var_obj)
             vars_db[v_name] = var_obj
+
+        # Si el trámite no posee variantes creadas, generar variante inicial por defecto
+        existing_vars_stmt = select(Variante).where(Variante.tramite_id == tramite.id)
+        existing_vars_res = await session.execute(existing_vars_stmt)
+        if not list(existing_vars_res.scalars().all()):
+            var_def = Variante(
+                tramite_id=tramite.id,
+                nombre="Atención General",
+                descripcion="Atención estándar del trámite",
+                duracion_minutos=15,
+            )
+            session.add(var_def)
+            await session.commit()
+            await session.refresh(var_def)
+            vars_db["Atención General"] = var_def
 
         for enl_data in tr_info["enlaces"]:
             desc = str(enl_data["descripcion"])

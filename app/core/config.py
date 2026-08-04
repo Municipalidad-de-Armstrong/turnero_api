@@ -1,4 +1,4 @@
-from typing import List, Union, Optional
+from typing import Any, List, Union, Optional
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     @property
     def is_development(self) -> bool:
         return self.ENVIRONMENT.lower().strip() == "development"
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.is_production:
+            self.SESSION_COOKIE_SECURE = True
 
 
 settings = Settings()

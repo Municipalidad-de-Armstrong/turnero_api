@@ -28,6 +28,7 @@ async def test_cancel_turno_ciudadano_24h_rule_success():
         fecha_hora_fin=futuro_remoto + timedelta(minutes=30),
         estado="RESERVADO",
         ciudadano=ciudadano,
+        created_at=datetime.now(timezone.utc),
     )
 
     mock_res = MagicMock()
@@ -54,6 +55,7 @@ async def test_cancel_turno_ciudadano_less_than_24h_fails():
         fecha_hora_fin=futuro_cercano + timedelta(minutes=30),
         estado="RESERVADO",
         ciudadano=ciudadano,
+        created_at=datetime.now(timezone.utc),
     )
 
     mock_res = MagicMock()
@@ -81,6 +83,7 @@ async def test_cancel_turno_admin_requires_reason():
         fecha_hora_fin=futuro + timedelta(minutes=30),
         estado="RESERVADO",
         ciudadano=User(id=1, nombre="Juan", apellido="Perez"),
+        created_at=datetime.now(timezone.utc),
     )
 
     mock_res = MagicMock()
@@ -122,7 +125,7 @@ async def test_create_turno_conflict_409():
         req = TurnoCreateRequest(
             tramite_id=10,
             variante_ids=[1],
-            fecha_hora_inicio=datetime(2026, 8, 3, 12, 0, tzinfo=timezone.utc), # 12:00 UTC = 09:00 Local (Lunes)
+            fecha_hora_inicio=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc), # Lunes 09:00 ART
         )
 
         with pytest.raises(HTTPException) as exc_info:

@@ -39,6 +39,7 @@ async def test_get_cola_dia_ordering():
         ciudadano=ciudadano,
         tramite=tramite,
         variantes=[],
+        created_at=now_utc,
     )
 
     turno_reg_1 = Turno(
@@ -52,6 +53,7 @@ async def test_get_cola_dia_ordering():
         ciudadano=ciudadano,
         tramite=tramite,
         variantes=[],
+        created_at=now_utc,
     )
 
     turno_sob_baja = Turno(
@@ -93,7 +95,7 @@ async def test_get_cola_dia_ordering():
     ]
     db.execute.return_value = mock_res
 
-    with patch("app.services.operation_service.decrypt_pii", side_effect=lambda x: "12345678"):
+    with patch("app.services.turno_service.decrypt_pii", side_effect=lambda x: "12345678"):
         res = await OperationService.get_cola_dia(db, fecha=date.today())
 
     assert len(res) == 4
@@ -124,6 +126,7 @@ async def test_registrar_resultado_incompleto_requires_comment():
         ciudadano=ciudadano,
         tramite=tramite,
         variantes=[],
+        created_at=datetime.now(timezone.utc),
     )
 
     mock_res = MagicMock()
@@ -135,7 +138,7 @@ async def test_registrar_resultado_incompleto_requires_comment():
         await OperationService.registrar_resultado_turno(db, turno.id, req_sin_comentario, admin)
     assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
 
-    with patch("app.services.operation_service.decrypt_pii", return_value="12345678"):
+    with patch("app.services.turno_service.decrypt_pii", return_value="12345678"):
         req_con_comentario = TurnoResultadoRequest(
             estado="INCOMPLETO", resultado_comentario="Falta libre de deuda de faltas"
         )
@@ -163,6 +166,7 @@ async def test_registrar_resultado_completo_con_carnet():
         ciudadano=ciudadano,
         tramite=tramite,
         variantes=[],
+        created_at=datetime.now(timezone.utc),
     )
 
     mock_res = MagicMock()
@@ -177,9 +181,9 @@ async def test_registrar_resultado_completo_con_carnet():
         fecha_vencimiento=venc_futuro,
     )
 
-    with patch("app.services.operation_service.decrypt_pii", return_value="12345678"):
+    with patch("app.services.turno_service.decrypt_pii", return_value="12345678"):
         with patch("app.services.operation_service.encrypt_pii", return_value="encrypted_carnet"):
-            with patch("app.services.operation_service.hash_dni_hmac", return_value="hmac_carnet"):
+            with patch("app.services.operation_service.hash_carnet_hmac", return_value="hmac_carnet"):
                 res = await OperationService.registrar_resultado_turno(db, turno.id, req, admin)
                 assert res.estado == "COMPLETO"
                 assert db.add.called
