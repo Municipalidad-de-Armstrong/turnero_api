@@ -23,7 +23,7 @@ from app.schemas.auth import (
     UsurpationReportCreate,
     UsurpationReportResponse,
 )
-from app.services.auth_token_service import AuthTokenService
+from app.services.auth_token_service import AuthTokenService, PASSWORD_RESET_KEY_PREFIX
 
 logger = logging.getLogger(__name__)
 
