@@ -48,8 +48,11 @@ async def list_turnos(
     fecha_desde: Optional[datetime] = Query(None),
     fecha_hasta: Optional[datetime] = Query(None),
     area_id: Optional[int] = Query(None),
+    tramite_id: Optional[int] = Query(None),
     estado: Optional[str] = Query(None),
     es_sobreturno: Optional[bool] = Query(None),
+    dni: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> List[TurnoResponse]:
@@ -59,8 +62,11 @@ async def list_turnos(
         fecha_desde=fecha_desde,
         fecha_hasta=fecha_hasta,
         area_id=area_id,
+        tramite_id=tramite_id,
         estado=estado,
         es_sobreturno=es_sobreturno,
+        dni=dni,
+        search=search,
     )
 
 

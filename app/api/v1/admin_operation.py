@@ -7,8 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import require_roles
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.turno import TurnoResponse, TurnoResultadoRequest
+from app.schemas.turno import TurnoResponse, TurnoResultadoRequest, TurnoCreateRequest, SobreturnoCreateRequest
 from app.services.operation_service import OperationService
+from app.services.turno_service import TurnoService
 
 router = APIRouter(prefix="/admin", tags=["admin-operation"])
 
@@ -27,6 +28,38 @@ async def get_cola_dia(
 ) -> List[TurnoResponse]:
     return await OperationService.get_cola_dia(
         db=db, fecha=fecha, tramite_id=tramite_id, area_id=area_id
+    )
+
+
+@router.post(
+    "/sobreturnos",
+    response_model=TurnoResponse,
+    status_code=201,
+    summary="Cargar un sobreturno con prioridad",
+)
+async def crear_sobreturno(
+    data: SobreturnoCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["ADMINISTRATIVO", "ADMINISTRADOR"])),
+) -> TurnoResponse:
+    return await OperationService.crear_sobreturno(
+        db=db, data=data, current_user=current_user
+    )
+
+
+@router.post(
+    "/turnos/manual",
+    response_model=TurnoResponse,
+    status_code=201,
+    summary="Agendamiento manual presencial de turnos",
+)
+async def crear_turno_manual(
+    data: TurnoCreateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_roles(["ADMINISTRATIVO", "ADMINISTRADOR"])),
+) -> TurnoResponse:
+    return await TurnoService.create_turno(
+        db=db, current_user=current_user, data=data
     )
 
 

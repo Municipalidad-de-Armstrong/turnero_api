@@ -6,17 +6,20 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.security import hash_carnet_hmac, encrypt_pii
+from app.core.security import hash_carnet_hmac, encrypt_pii, hash_dni_hmac, hash_password
 from app.models.carnet import Carnet
+from app.models.role import Role
 from app.models.tramite import Tramite
 from app.models.turno import Turno
 from app.models.user import User
-from app.schemas.turno import TurnoResponse, TurnoResultadoRequest
+from app.models.variante import Variante
+from app.schemas.turno import TurnoResponse, TurnoResultadoRequest, SobreturnoCreateRequest
 from app.services.availability_service import LOCAL_TZ
-from app.services.turno_service import turno_to_response
+from app.services.turno_service import TurnoService, turno_to_response
 
 
 class OperationService:
+
 
     @classmethod
     async def get_cola_dia(
@@ -159,3 +162,116 @@ class OperationService:
         await db.commit()
         await db.refresh(turno)
         return turno_to_response(turno, include_pii=True)
+
+    @classmethod
+    async def crear_sobreturno(
+        cls,
+        db: AsyncSession,
+        data: SobreturnoCreateRequest,
+        current_user: User,
+    ) -> TurnoResponse:
+        tramite = await db.get(Tramite, data.tramite_id)
+        if not tramite:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Trámite no encontrado.",
+            )
+
+        try:
+            fecha_obj = date.fromisoformat(data.fecha)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Formato de fecha inválido. Use YYYY-MM-DD.",
+            )
+
+        start_dt = datetime.combine(fecha_obj, time.min, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+        end_dt = datetime.combine(fecha_obj, time.max, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+
+        stmt_count = select(Turno).where(
+            Turno.tramite_id == data.tramite_id,
+            Turno.es_sobreturno.is_(True),
+            Turno.estado != "CANCELADO",
+            Turno.fecha_hora_inicio >= start_dt,
+            Turno.fecha_hora_inicio <= end_dt,
+        )
+        res_count = await db.execute(stmt_count)
+        existing_sobreturnos = res_count.scalars().all()
+
+        limite = tramite.limite_sobreturnos_diarios if tramite.limite_sobreturnos_diarios is not None else 5
+        if len(existing_sobreturnos) >= limite:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Límite diario de sobreturnos alcanzado para esta fecha (Máximo {limite}).",
+            )
+
+        ciudadano_id = None
+        if data.ciudadano_id:
+            user = await db.get(User, data.ciudadano_id)
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Ciudadano no encontrado.",
+                )
+            ciudadano_id = user.id
+        elif data.datos_registro_inmediato:
+            reg = data.datos_registro_inmediato
+            dni_hmac_val = hash_dni_hmac(reg.dni)
+            stmt_usr = select(User).where(User.dni_hmac == dni_hmac_val)
+            res_usr = await db.execute(stmt_usr)
+            usr = res_usr.scalar_one_or_none()
+            if usr:
+                ciudadano_id = usr.id
+            else:
+                stmt_role = select(Role).where(Role.nombre == "ciudadano")
+                role_res = await db.execute(stmt_role)
+                role = role_res.scalar_one_or_none()
+
+                new_user = User(
+                    email=reg.email,
+                    password_hash=hash_password(uuid.uuid4().hex),
+                    nombre=reg.nombre,
+                    apellido=reg.apellido,
+                    dni_cifrado=encrypt_pii(reg.dni),
+                    dni_hmac=dni_hmac_val,
+                    telefono_cifrado=encrypt_pii(reg.telefono),
+                    rol_id=role.id if role else 1,
+                    estado="PENDING_VALIDATION",
+                )
+                db.add(new_user)
+                await db.flush()
+                ciudadano_id = new_user.id
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debe especificar un ciudadano o proveer los datos para su registro inmediato.",
+            )
+
+        prio = (data.prioridad or "MEDIA").upper()
+        if prio not in ("ALTA", "MEDIA", "BAJA"):
+            prio = "MEDIA"
+
+        variantes_objs = []
+        if data.variante_ids:
+            stmt_v = select(Variante).where(Variante.id.in_(data.variante_ids))
+            res_v = await db.execute(stmt_v)
+            variantes_objs = list(res_v.scalars().all())
+
+        nuevo_turno = Turno(
+            id=uuid.uuid4(),
+            ciudadano_id=ciudadano_id,
+            tramite_id=data.tramite_id,
+            fecha_hora_inicio=start_dt,
+            fecha_hora_fin=end_dt,
+            estado="RESERVADO",
+            es_sobreturno=True,
+            sobreturno_prioridad=prio,
+        )
+        if variantes_objs:
+            nuevo_turno.variantes = variantes_objs
+
+        db.add(nuevo_turno)
+        await db.commit()
+
+        return await TurnoService.get_turno_by_id(db, current_user, nuevo_turno.id)
+

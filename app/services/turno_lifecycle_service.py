@@ -100,6 +100,12 @@ class TurnoLifecycleService:
                 status_code=status.HTTP_404_NOT_FOUND, detail="Turno no encontrado."
             )
 
+        if turno.es_sobreturno and data.fecha_hora_inicio:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Los sobreturnos no poseen una franja horaria asignable y no se pueden reprogramar. Si es necesario, cancele el sobreturno y solicite uno nuevo.",
+            )
+
         if current_user.rol.nombre == "CIUDADANO":
             if turno.ciudadano_id != current_user.id:
                 raise HTTPException(

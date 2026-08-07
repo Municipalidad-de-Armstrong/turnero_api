@@ -194,10 +194,11 @@ async def get_disponibilidad(
     tramite_id: int,
     fecha: date = Query(...),
     variante_ids: List[int] = Query(default=[]),
+    for_admin: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
 ):
     return await AvailabilityService.get_disponibilidad(
-        db, tramite_id, fecha, variante_ids
+        db, tramite_id, fecha, variante_ids, for_admin=for_admin
     )
 
 

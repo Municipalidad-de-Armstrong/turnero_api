@@ -23,6 +23,18 @@ class TurnoCreateRequest(BaseModel):
     )
 
 
+class SobreturnoCreateRequest(BaseModel):
+    tramite_id: int = Field(..., description="ID del trámite")
+    fecha: str = Field(..., description="Fecha del sobreturno en formato YYYY-MM-DD")
+    prioridad: str = Field("MEDIA", description="Prioridad del sobreturno: ALTA, MEDIA, BAJA")
+    ciudadano_id: Optional[int] = Field(None, description="ID del ciudadano si ya está registrado")
+    datos_registro_inmediato: Optional[DatosRegistroInmediato] = Field(
+        None, description="Datos para registrar al ciudadano al vuelo si no existe"
+    )
+    variante_ids: Optional[List[int]] = Field(None, description="Opcional. Lista de IDs de variantes asociadas")
+
+
+
 class TurnoUpdateRequest(BaseModel):
     fecha_hora_inicio: Optional[datetime] = Field(None, description="Nueva fecha/hora para reprogramación")
     variante_ids: Optional[List[int]] = Field(None, description="Nuevas variantes para reprogramación")

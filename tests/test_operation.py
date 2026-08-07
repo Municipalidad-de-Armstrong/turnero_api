@@ -102,7 +102,7 @@ async def test_get_cola_dia_ordering():
     # Regulares primero ordenados por inicio
     assert res[0].id == turno_reg_1.id
     assert res[1].id == turno_reg_2.id
-    # Sobretornos al final ordenados por prioridad ALTA -> BAJA
+    # Sobreturnos al final ordenados por prioridad ALTA -> BAJA
     assert res[2].id == turno_sob_alta.id
     assert res[3].id == turno_sob_baja.id
 

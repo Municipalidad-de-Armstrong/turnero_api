@@ -68,7 +68,12 @@ class AvailabilityService:
 
     @classmethod
     async def get_disponibilidad(
-        cls, db: AsyncSession, tramite_id: int, fecha: date, variante_ids: List[int]
+        cls,
+        db: AsyncSession,
+        tramite_id: int,
+        fecha: date,
+        variante_ids: List[int],
+        for_admin: bool = False,
     ) -> List[BloqueDisponibilidad]:
         variantes = await cls.validate_tramite_and_variantes(
             db, tramite_id, variante_ids
@@ -110,7 +115,7 @@ class AvailabilityService:
         current_start = dt_start
         step = timedelta(minutes=15)
         duracion_td = timedelta(minutes=duracion_total)
-        min_booking = _min_booking_time()
+        min_booking = datetime.now(timezone.utc) if for_admin else _min_booking_time()
 
         while current_start + duracion_td <= dt_end:
             slot_end = current_start + duracion_td

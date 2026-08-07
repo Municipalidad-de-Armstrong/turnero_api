@@ -6,8 +6,9 @@ from sqlalchemy import select, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.security import decrypt_pii
+from app.core.security import decrypt_pii, encrypt_pii, hash_dni_hmac, hash_password
 from app.models.agenda_configuracion import AgendaConfiguracion
+from app.models.role import Role
 from app.models.tramite import Tramite
 from app.models.turno import Turno
 from app.models.user import User
@@ -62,7 +63,7 @@ def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
         cancelado_por_id=turno.cancelado_por_id,
         resultado_comentario=turno.resultado_comentario,
         variantes=list(turno.variantes) if turno.variantes else [],
-        created_at=turno.created_at,
+        created_at=turno.created_at or datetime.now(timezone.utc),
     )
 
 
@@ -80,6 +81,33 @@ class TurnoService:
         if current_user.rol.nombre in ["ADMINISTRATIVO", "ADMINISTRADOR"]:
             if data.ciudadano_id:
                 ciudadano_id = data.ciudadano_id
+            elif data.datos_registro_inmediato:
+                reg = data.datos_registro_inmediato
+                dni_hmac_val = hash_dni_hmac(reg.dni)
+                stmt_usr = select(User).where(User.dni_hmac == dni_hmac_val)
+                res_usr = await db.execute(stmt_usr)
+                usr = res_usr.scalar_one_or_none()
+                if usr:
+                    ciudadano_id = usr.id
+                else:
+                    stmt_role = select(Role).where(Role.nombre == "ciudadano")
+                    role_res = await db.execute(stmt_role)
+                    role = role_res.scalar_one_or_none()
+
+                    new_user = User(
+                        email=reg.email,
+                        password_hash=hash_password(uuid.uuid4().hex),
+                        nombre=reg.nombre,
+                        apellido=reg.apellido,
+                        dni_cifrado=encrypt_pii(reg.dni),
+                        dni_hmac=dni_hmac_val,
+                        telefono_cifrado=encrypt_pii(reg.telefono),
+                        rol_id=role.id if role else 1,
+                        estado="PENDING_VALIDATION",
+                    )
+                    db.add(new_user)
+                    await db.flush()
+                    ciudadano_id = new_user.id
 
         duracion_total = sum(v.duracion_minutos for v in variantes) or 15
         dt_inicio = data.fecha_hora_inicio
@@ -114,12 +142,13 @@ class TurnoService:
                 detail="El horario seleccionado está fuera del rango de atención de la agenda.",
             )
 
-        min_booking = _min_booking_time()
-        if dt_inicio < min_booking:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="No se puede reservar un turno para el mismo día. Seleccione una fecha a partir de mañana.",
-            )
+        if current_user.rol.nombre == "CIUDADANO":
+            min_booking = _min_booking_time()
+            if dt_inicio < min_booking:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="No se puede reservar un turno para el mismo día. Seleccione una fecha a partir de mañana.",
+                )
 
         turnos_stmt = (
             select(Turno)
@@ -189,7 +218,8 @@ class TurnoService:
                 detail="No tiene permisos para acceder a este turno.",
             )
 
-        return turno_to_response(turno)
+        is_admin = current_user.rol.nombre in ["ADMINISTRATIVO", "ADMINISTRADOR"]
+        return turno_to_response(turno, include_pii=is_admin)
 
     @classmethod
     async def list_turnos(
@@ -199,8 +229,11 @@ class TurnoService:
         fecha_desde: Optional[datetime] = None,
         fecha_hasta: Optional[datetime] = None,
         area_id: Optional[int] = None,
+        tramite_id: Optional[int] = None,
         estado: Optional[str] = None,
         es_sobreturno: Optional[bool] = None,
+        dni: Optional[str] = None,
+        search: Optional[str] = None,
     ) -> List[TurnoResponse]:
         stmt = select(Turno).options(
             selectinload(Turno.ciudadano),
@@ -209,6 +242,8 @@ class TurnoService:
         )
 
         filters = []
+        is_admin = current_user.rol.nombre in ["ADMINISTRATIVO", "ADMINISTRADOR"]
+
         if current_user.rol.nombre == "CIUDADANO":
             filters.append(Turno.ciudadano_id == current_user.id)
         else:
@@ -218,10 +253,20 @@ class TurnoService:
                 filters.append(Turno.fecha_hora_inicio <= fecha_hasta)
             if area_id:
                 stmt = stmt.join(Turno.tramite).where(Tramite.area_id == area_id)
+            if tramite_id:
+                filters.append(Turno.tramite_id == tramite_id)
             if estado:
                 filters.append(Turno.estado == estado)
             if es_sobreturno is not None:
                 filters.append(Turno.es_sobreturno == es_sobreturno)
+            if dni:
+                dni_hmac_val = hash_dni_hmac(dni.strip())
+                stmt = stmt.join(Turno.ciudadano).where(User.dni_hmac == dni_hmac_val)
+            if search:
+                pattern = f"%{search.strip()}%"
+                if not dni:
+                    stmt = stmt.join(Turno.ciudadano)
+                filters.append(User.nombre.ilike(pattern) | User.apellido.ilike(pattern))
 
         if filters:
             stmt = stmt.where(and_(*filters))
@@ -229,7 +274,7 @@ class TurnoService:
         stmt = stmt.order_by(Turno.fecha_hora_inicio.desc())
         res = await db.execute(stmt)
         turnos = res.scalars().all()
-        return [turno_to_response(t) for t in turnos]
+        return [turno_to_response(t, include_pii=is_admin) for t in turnos]
 
     @classmethod
     async def cancel_turno(
