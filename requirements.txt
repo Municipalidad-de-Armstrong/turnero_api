@@ -15,4 +15,5 @@ passlib[bcrypt]==1.7.4
 pyjwt==2.8.0
 ruff>=0.3.0
 python-multipart>=0.0.9
+reportlab>=4.0.0
 

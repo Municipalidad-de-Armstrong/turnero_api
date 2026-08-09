@@ -9,10 +9,40 @@ from app.models.tramite_enlace import TramiteEnlace
 from app.models.variante import Variante
 
 
+def _ensure_seed_files_exist():
+    import os
+    target = os.path.join("uploads", "tramites", "ficha_medica_ejemplo.pdf")
+    if not os.path.exists(target):
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        try:
+            from reportlab.lib.pagesizes import letter
+            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+            from reportlab.lib import colors
+
+            doc = SimpleDocTemplate(target, pagesize=letter)
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontName="Helvetica-Bold", fontSize=16, textColor=colors.HexColor("#FE8F00"), alignment=1)
+            body_style = ParagraphStyle("Body", parent=styles["Normal"], fontName="Helvetica", fontSize=10, leading=14)
+            story = [
+                Paragraph("MUNICIPALIDAD DE ARMSTRONG", title_style),
+                Spacer(1, 10),
+                Paragraph("<b>FICHA MÉDICA DE APTITUD OBLIGATORIA</b>", title_style),
+                Spacer(1, 15),
+                Paragraph("Formulario oficial para trámites de Licencia de Conducir y Habilitaciones. Complete los datos personales y de aptitud médica solicitados.", body_style)
+            ]
+            doc.build(story)
+        except Exception:
+            with open(target, "wb") as f:
+                f.write(b"%PDF-1.4 sample pdf file")
+
+
 async def seed_catalog(
     session: AsyncSession,
 ) -> Dict[str, Dict[str, Any]]:
     """Seed areas, tramites, variantes, documentos y enlaces."""
+    _ensure_seed_files_exist()
+
     areas_data = [
         {
             "nombre": "Tránsito y Licencias",
@@ -76,9 +106,13 @@ async def seed_catalog(
             ],
             "enlaces": [
                 {
-                    "descripcion": "Consulta de Infracciones Santa Fe",
-                    "url": "https://santafe.gov.ar/infracciones",
-                }
+                    "descripcion": "Consulta de Infracciones de Tránsito Santa Fe",
+                    "url": "https://www.santafe.gob.ar/infracciones/",
+                },
+                {
+                    "descripcion": "Portal Oficial Municipalidad de Armstrong",
+                    "url": "https://armstrong.gob.ar/",
+                },
             ],
             "documentos": [
                 {
@@ -104,7 +138,12 @@ async def seed_catalog(
                     "duracion_minutos": 15,
                 }
             ],
-            "enlaces": [],
+            "enlaces": [
+                {
+                    "descripcion": "Juzgado de Faltas - Consulta de Infracciones Santa Fe",
+                    "url": "https://www.santafe.gob.ar/infracciones/",
+                }
+            ],
             "documentos": [],
         },
         {
@@ -132,8 +171,8 @@ async def seed_catalog(
             ],
             "enlaces": [
                 {
-                    "descripcion": "Colegio de Arquitectos Santa Fe",
-                    "url": "https://capsf.org.ar",
+                    "descripcion": "Colegio de Arquitectos de la Provincia de Santa Fe",
+                    "url": "https://www.capsf.org.ar/",
                 }
             ],
             "documentos": [],
@@ -162,9 +201,19 @@ async def seed_catalog(
                     "duracion_minutos": 30,
                 },
             ],
-            "enlaces": [],
+            "enlaces": [
+                {
+                    "descripcion": "AFIP / ARCA - Inscripción y Constancia",
+                    "url": "https://www.afip.gob.ar/",
+                },
+                {
+                    "descripcion": "Municipalidad de Armstrong - Portal de Trámites",
+                    "url": "https://armstrong.gob.ar/",
+                },
+            ],
             "documentos": [],
         },
+
     ]
 
     catalog_result: Dict[str, Dict[str, Any]] = {}

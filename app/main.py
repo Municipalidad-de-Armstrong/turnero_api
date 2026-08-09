@@ -12,10 +12,12 @@ from app.api.v1 import (
     areas,
     auth,
     health,
+    notifications,
     tramites,
     turnos,
     users,
 )
+
 from app.core.config import settings
 from app.core.database import async_session_maker
 from app.core.redis import close_redis_client, get_redis_client, redis_kind
@@ -95,6 +97,8 @@ app.include_router(areas.router, prefix=settings.API_V1_STR)
 app.include_router(tramites.router, prefix=settings.API_V1_STR)
 app.include_router(agenda.router, prefix=settings.API_V1_STR)
 app.include_router(turnos.router, prefix=f"{settings.API_V1_STR}/turnos", tags=["turnos"])
+app.include_router(notifications.router, prefix=settings.API_V1_STR)
+
 
 
 @app.get("/")

@@ -22,38 +22,19 @@ from app.services.turno_lifecycle_service import TurnoLifecycleService
 
 
 def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
-    ciudadano_nombre = (
-        f"{turno.ciudadano.nombre} {turno.ciudadano.apellido}"
-        if turno.ciudadano
-        else None
-    )
-    tramite_nombre = turno.tramite.nombre if turno.tramite else None
-    emite_carnet = turno.tramite.emite_carnet if turno.tramite else None
-
-    if include_pii:
-        dni_val = (
-            decrypt_pii(turno.ciudadano.dni_cifrado)
-            if (turno.ciudadano and turno.ciudadano.dni_cifrado)
-            else None
-        )
-        phone_val = (
-            decrypt_pii(turno.ciudadano.telefono_cifrado)
-            if (turno.ciudadano and turno.ciudadano.telefono_cifrado)
-            else None
-        )
-    else:
-        dni_val = None
-        phone_val = None
-
+    c = turno.ciudadano
+    t = turno.tramite
+    dni_v = decrypt_pii(c.dni_cifrado) if (include_pii and c and c.dni_cifrado) else None
+    ph_v = decrypt_pii(c.telefono_cifrado) if (include_pii and c and c.telefono_cifrado) else None
     return TurnoResponse(
         id=turno.id,
         ciudadano_id=turno.ciudadano_id,
-        ciudadano_nombre_completo=ciudadano_nombre,
-        ciudadano_dni=dni_val,
-        ciudadano_telefono=phone_val,
+        ciudadano_nombre_completo=f"{c.nombre} {c.apellido}" if c else None,
+        ciudadano_dni=dni_v,
+        ciudadano_telefono=ph_v,
         tramite_id=turno.tramite_id,
-        tramite_nombre=tramite_nombre,
-        emite_carnet=emite_carnet,
+        tramite_nombre=t.nombre if t else None,
+        emite_carnet=t.emite_carnet if t else None,
         fecha_hora_inicio=turno.fecha_hora_inicio,
         fecha_hora_fin=turno.fecha_hora_fin,
         estado=turno.estado,
@@ -65,6 +46,7 @@ def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
         variantes=list(turno.variantes) if turno.variantes else [],
         created_at=turno.created_at or datetime.now(timezone.utc),
     )
+
 
 
 class TurnoService:
@@ -185,7 +167,27 @@ class TurnoService:
         await db.commit()
         await db.refresh(nuevo_turno)
 
-        return await cls.get_turno_by_id(db, current_user, nuevo_turno.id)
+        from app.services.notification_service import (
+            create_in_app_notification,
+            send_whatsapp_notification,
+        )
+        t_resp = await cls.get_turno_by_id(db, current_user, nuevo_turno.id)
+        tr_name = getattr(t_resp, "tramite_nombre", None)
+        if not tr_name and hasattr(t_resp, "tramite") and t_resp.tramite:
+            tr_name = t_resp.tramite.nombre
+        tr_name = tr_name or "Trámite"
+        dt_str = dt_inicio.strftime("%Y-%m-%d %H:%M")
+        msg = f"Su turno para '{tr_name}' ha sido reservado para el {dt_str} hs."
+        await create_in_app_notification(
+            db, usuario_id=ciudadano_id, titulo="Turno Confirmado", mensaje=msg
+        )
+        c_phone = getattr(t_resp, "ciudadano_telefono", None)
+        if c_phone:
+            await send_whatsapp_notification(c_phone, msg)
+
+        return t_resp
+
+
 
     @classmethod
     async def get_turno_by_id(
@@ -218,8 +220,12 @@ class TurnoService:
                 detail="No tiene permisos para acceder a este turno.",
             )
 
-        is_admin = current_user.rol.nombre in ["ADMINISTRATIVO", "ADMINISTRADOR"]
-        return turno_to_response(turno, include_pii=is_admin)
+        is_owner_or_admin = (
+            current_user.id == turno.ciudadano_id
+            or current_user.rol.nombre in ["ADMINISTRATIVO", "ADMINISTRADOR"]
+        )
+        return turno_to_response(turno, include_pii=is_owner_or_admin)
+
 
     @classmethod
     async def list_turnos(
