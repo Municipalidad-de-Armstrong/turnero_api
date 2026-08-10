@@ -125,9 +125,10 @@ async def test_create_turno_conflict_409():
         req = TurnoCreateRequest(
             tramite_id=10,
             variante_ids=[1],
-            fecha_hora_inicio=datetime(2026, 8, 10, 12, 0, tzinfo=timezone.utc), # Lunes 09:00 ART
+            fecha_hora_inicio=datetime(2026, 8, 17, 12, 0, tzinfo=timezone.utc), # Lunes 09:00 ART
         )
 
         with pytest.raises(HTTPException) as exc_info:
             await TurnoService.create_turno(db, user, req)
         assert exc_info.value.status_code == status.HTTP_409_CONFLICT
+
