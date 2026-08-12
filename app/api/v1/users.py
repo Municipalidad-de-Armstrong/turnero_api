@@ -8,12 +8,13 @@ from app.core.security import (
     decrypt_pii,
     encrypt_pii,
     hash_dni_hmac,
-    mask_dni,
-    mask_phone,
+    hash_password,
+    verify_password,
 )
+
 from app.models.role import Role
 from app.models.user import User
-from app.schemas.auth import UserResponse, UserUpdateRequest
+from app.schemas.auth import PasswordChangeRequest, UserResponse, UserUpdateRequest
 
 router = APIRouter(prefix="/usuarios", tags=["Usuarios"])
 
@@ -23,25 +24,17 @@ async def get_my_profile(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # El rol ya viene cargado por get_current_user (eager-load), evitando una
-    # segunda query a la base de datos en cada llamada a /me.
+    # El usuario autenticado viendo su propio perfil accede a sus datos reales sin enmascarar
     raw_dni = decrypt_pii(current_user.dni_cifrado)
     raw_phone = decrypt_pii(current_user.telefono_cifrado)
-
-    if current_user.rol.nombre in ["administrador", "administrativo"]:
-        dni_display = raw_dni
-        phone_display = raw_phone
-    else:
-        dni_display = mask_dni(raw_dni)
-        phone_display = mask_phone(raw_phone)
 
     return UserResponse(
         id=current_user.id,
         nombre=current_user.nombre,
         apellido=current_user.apellido,
         email=current_user.email,
-        dni=dni_display,
-        telefono=phone_display,
+        dni=raw_dni,
+        telefono=raw_phone,
         rol=current_user.rol.nombre,
         activo=current_user.activo,
         estado=current_user.estado,
@@ -64,7 +57,6 @@ async def update_my_profile(
                 detail="El correo electrónico ya se encuentra registrado.",
             )
         current_user.email = req.email
-        # Modifying email moves account to PENDING_VALIDATION as per HU-04 CA line 31
         current_user.estado = "PENDING_VALIDATION"
 
     if req.telefono:
@@ -73,6 +65,24 @@ async def update_my_profile(
     await db.commit()
     await db.refresh(current_user)
     return await get_my_profile(current_user, db)
+
+
+@router.post("/me/password")
+async def change_my_password(
+    req: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(req.current_password, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña actual es incorrecta.",
+        )
+    current_user.password_hash = hash_password(req.new_password)
+
+    await db.commit()
+    return {"detail": "Contraseña actualizada correctamente."}
+
 
 
 @router.get("", response_model=List[UserResponse])

@@ -18,8 +18,8 @@ DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
         "password": "Admin123!",
         "nombre": "Admin",
         "apellido": "Desarrollo",
-        "dni": "11111111",
-        "telefono": "3471000001",
+        "dni": "28123401",
+        "telefono": "3471400001",
         "rol_id": 3,
     },
     {
@@ -27,8 +27,8 @@ DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
         "password": "Operador123!",
         "nombre": "Carlos",
         "apellido": "Operador",
-        "dni": "22222222",
-        "telefono": "3471000002",
+        "dni": "30123402",
+        "telefono": "3471400002",
         "rol_id": 2,
     },
     {
@@ -36,8 +36,8 @@ DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
         "password": "Operador123!",
         "nombre": "Marta",
         "apellido": "Inspectora",
-        "dni": "22222223",
-        "telefono": "3471000004",
+        "dni": "31123404",
+        "telefono": "3471400004",
         "rol_id": 2,
     },
     {
@@ -45,8 +45,8 @@ DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
         "password": "Ciudadano123!",
         "nombre": "Juan",
         "apellido": "Pérez",
-        "dni": "33333333",
-        "telefono": "3471000003",
+        "dni": "38123456",
+        "telefono": "3471556677",
         "rol_id": 1,
     },
     {
@@ -54,8 +54,8 @@ DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
         "password": "Ciudadano123!",
         "nombre": "María",
         "apellido": "González",
-        "dni": "44444444",
-        "telefono": "3471000005",
+        "dni": "40123458",
+        "telefono": "3471556688",
         "rol_id": 1,
     },
     {
@@ -63,8 +63,8 @@ DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
         "password": "Ciudadano123!",
         "nombre": "Roberto",
         "apellido": "Fernández",
-        "dni": "55555555",
-        "telefono": "3471000006",
+        "dni": "42123459",
+        "telefono": "3471556699",
         "rol_id": 1,
     },
 ]
@@ -101,6 +101,12 @@ async def seed_roles_and_users(session: AsyncSession) -> Dict[str, User]:
             session.add(user)
             await session.commit()
             await session.refresh(user)
+        else:
+            # Garantizar que las cuentas de desarrollo tengan PII real encriptada sin enmascarar en DB
+            user.dni_cifrado = encrypt_pii(str(acc["dni"]))
+            user.dni_hmac = hash_dni_hmac(str(acc["dni"]))
+            user.telefono_cifrado = encrypt_pii(str(acc["telefono"]))
+            await session.commit()
         created_users[email] = user
 
     return created_users

@@ -61,6 +61,19 @@ class UserUpdateRequest(BaseModel):
     email: Optional[EmailStr] = None
 
 
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8, max_length=100)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_password_policy(cls, v: str) -> str:
+        if not re.search(r"[A-Za-z]", v) or not re.search(r"[0-9]", v):
+            raise ValueError("La contraseña debe incluir al menos una letra y un número.")
+        return v
+
+
+
 class UsurpationReportCreate(BaseModel):
     nombre: str = Field(..., min_length=2, max_length=100)
     apellido: str = Field(..., min_length=2, max_length=100)

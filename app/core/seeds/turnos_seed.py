@@ -158,10 +158,10 @@ async def seed_turnos_and_reports(
     reports_data = [
         {
             "nombre": "Esteban",
-            "apellido": "Falsi",
-            "dni": "99999999",
-            "email": "sospecha@ejemplo.com",
-            "telefono": "3471999888",
+            "apellido": "Martínez",
+            "dni": "37123999",
+            "email": "esteban.martinez@ejemplo.com",
+            "telefono": "3471459888",
             "motivo": "Intento de registro de cita a mi nombre sin autorización.",
             "estado": "PENDIENTE",
             "resolved_at": None,
@@ -169,14 +169,15 @@ async def seed_turnos_and_reports(
         {
             "nombre": "Lucía",
             "apellido": "Gómez",
-            "dni": "88888888",
+            "dni": "39888777",
             "email": "lucia.gomez@ejemplo.com",
-            "telefono": "3471777666",
+            "telefono": "3471477666",
             "motivo": "Extravío de documento nacional de identidad en vía pública.",
             "estado": "RESUELTO",
             "resolved_at": now,
         },
     ]
+
 
     for rep in reports_data:
         dni_hmac = hash_dni_hmac(rep["dni"])

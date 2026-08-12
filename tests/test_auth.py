@@ -20,8 +20,8 @@ async def test_register_user_success(client: AsyncClient):
             nombre="Juan",
             apellido="Pérez",
             email="juan.perez@ejemplo.com",
-            dni="XX.XXX.456",
-            telefono="XXXX-XX6677",
+            dni="38123456",
+            telefono="3471556677",
             rol="ciudadano",
             activo=True,
             estado="ACTIVE",
@@ -41,9 +41,10 @@ async def test_register_user_success(client: AsyncClient):
         assert response.status_code == 201
         data = response.json()
         assert data["email"] == "juan.perez@ejemplo.com"
-        assert data["dni"] == "XX.XXX.456"
-        assert data["telefono"] == "XXXX-XX6677"
+        assert data["dni"] == "38123456"
+        assert data["telefono"] == "3471556677"
         assert data["estado"] == "ACTIVE"
+
 
 
 @pytest.mark.asyncio
@@ -79,3 +80,46 @@ async def test_report_usurpation_success(client: AsyncClient):
         assert data["dni_mascarado"] == "XX.XXX.456"
         assert data["email_contacto"] == "juan.real@ejemplo.com"
         assert data["estado"] == "PENDIENTE"
+
+
+@pytest.mark.asyncio
+async def test_change_my_password_unauthorized(client: AsyncClient):
+    """Test changing password fails when not authenticated."""
+    response = await client.post(
+        "/api/v1/usuarios/me/password",
+        json={"current_password": "OldPass123", "new_password": "NewPass123"},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_update_user_profile_unauthorized(client: AsyncClient):
+    """Test updating profile fails when not authenticated."""
+    response = await client.patch(
+        "/api/v1/usuarios/me",
+        json={"telefono": "3471556677"},
+    )
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_change_my_password_validation_error(client: AsyncClient):
+    """Test password change enforces password policy (at least 8 chars, 1 letter, 1 number)."""
+    from app.api.deps import get_current_user
+    from app.main import app
+    from app.models.user import User
+
+    mock_user = User(id=1, email="c@test.com", password_hash="hash")
+    app.dependency_overrides[get_current_user] = lambda: mock_user
+
+    try:
+        response = await client.post(
+            "/api/v1/usuarios/me/password",
+            json={"current_password": "OldPass123", "new_password": "short"},
+        )
+        assert response.status_code == 422
+    finally:
+        app.dependency_overrides.pop(get_current_user, None)
+
+
+

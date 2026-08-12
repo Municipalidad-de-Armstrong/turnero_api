@@ -82,13 +82,14 @@ class AuthService:
             nombre=user.nombre,
             apellido=user.apellido,
             email=user.email,
-            dni=mask_dni(req.dni),
-            telefono=mask_phone(req.telefono),
+            dni=req.dni,
+            telefono=req.telefono,
             rol=role.nombre,
             activo=user.activo,
             estado=user.estado,
             created_at=user.created_at,
         )
+
 
     async def authenticate_user(self, email: str, password: str) -> User:
         stmt = select(User).where(User.email == email)
