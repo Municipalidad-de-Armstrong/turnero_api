@@ -1,4 +1,5 @@
-from typing import Any, Dict
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,10 +16,10 @@ def _ensure_seed_files_exist():
     if not os.path.exists(target):
         os.makedirs(os.path.dirname(target), exist_ok=True)
         try:
-            from reportlab.lib.pagesizes import letter
-            from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
             from reportlab.lib import colors
+            from reportlab.lib.pagesizes import letter
+            from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+            from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
 
             doc = SimpleDocTemplate(target, pagesize=letter)
             styles = getSampleStyleSheet()
@@ -39,7 +40,7 @@ def _ensure_seed_files_exist():
 
 async def seed_catalog(
     session: AsyncSession,
-) -> Dict[str, Dict[str, Any]]:
+) -> dict[str, dict[str, Any]]:
     """Seed areas, tramites, variantes, documentos y enlaces."""
     _ensure_seed_files_exist()
 
@@ -62,7 +63,7 @@ async def seed_catalog(
         },
     ]
 
-    areas_db: Dict[str, Area] = {}
+    areas_db: dict[str, Area] = {}
     for area_info in areas_data:
         stmt = select(Area).where(Area.nombre == area_info["nombre"])
         res = await session.execute(stmt)
@@ -216,7 +217,7 @@ async def seed_catalog(
 
     ]
 
-    catalog_result: Dict[str, Dict[str, Any]] = {}
+    catalog_result: dict[str, dict[str, Any]] = {}
 
     for tr_info in tramites_data:
         area = areas_db[str(tr_info["area_nombre"])]
@@ -240,7 +241,7 @@ async def seed_catalog(
             await session.commit()
             await session.refresh(tramite)
 
-        vars_db: Dict[str, Variante] = {}
+        vars_db: dict[str, Variante] = {}
         for var_data in tr_info["variantes"]:
             v_name = str(var_data["nombre"])
             stmt_v = select(Variante).where(

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,33 +29,33 @@ async def create_turno(
 
 @router.get(
     "/mis-turnos",
-    response_model=List[TurnoResponse],
+    response_model=list[TurnoResponse],
     summary="Listar mis turnos (para ciudadano logueado)",
 )
 async def get_mis_turnos(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[TurnoResponse]:
+) -> list[TurnoResponse]:
     return await TurnoService.list_turnos(db, current_user)
 
 
 @router.get(
     "",
-    response_model=List[TurnoResponse],
+    response_model=list[TurnoResponse],
     summary="Listar turnos con filtros",
 )
 async def list_turnos(
-    fecha_desde: Optional[datetime] = Query(None),
-    fecha_hasta: Optional[datetime] = Query(None),
-    area_id: Optional[int] = Query(None),
-    tramite_id: Optional[int] = Query(None),
-    estado: Optional[str] = Query(None),
-    es_sobreturno: Optional[bool] = Query(None),
-    dni: Optional[str] = Query(None),
-    search: Optional[str] = Query(None),
+    fecha_desde: datetime | None = Query(None),
+    fecha_hasta: datetime | None = Query(None),
+    area_id: int | None = Query(None),
+    tramite_id: int | None = Query(None),
+    estado: str | None = Query(None),
+    es_sobreturno: bool | None = Query(None),
+    dni: str | None = Query(None),
+    search: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-) -> List[TurnoResponse]:
+) -> list[TurnoResponse]:
     return await TurnoService.list_turnos(
         db,
         current_user,
@@ -104,7 +104,7 @@ async def update_turno(
 )
 async def cancel_turno(
     turno_id: uuid.UUID,
-    motivo_cancelacion: Optional[str] = Query(None),
+    motivo_cancelacion: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> TurnoResponse:
@@ -123,14 +123,16 @@ async def get_planilla_turno(
     current_user: User = Depends(get_current_user),
 ):
     from fastapi import Response
+
     from app.services.pdf_service import generate_turno_planilla_pdf
 
     t_resp = await TurnoService.get_turno_by_id(db, current_user, turno_id)
 
     # Fetch Tramite object to get documentacion_requerida & requerimientos_previos
     from sqlalchemy import select
-    from app.models.tramite import Tramite
     from sqlalchemy.orm import selectinload
+
+    from app.models.tramite import Tramite
 
     tram_res = await db.execute(
         select(Tramite).options(selectinload(Tramite.area)).where(Tramite.id == t_resp.tramite_id)
@@ -144,8 +146,8 @@ async def get_planilla_turno(
 
     ciudadano_dni = t_resp.ciudadano_dni
     if not ciudadano_dni:
-        from app.models.user import User
         from app.core.security import decrypt_pii
+        from app.models.user import User
         c_res = await db.execute(select(User).where(User.id == t_resp.ciudadano_id))
         c_user = c_res.scalar_one_or_none()
         if c_user and c_user.dni_cifrado:

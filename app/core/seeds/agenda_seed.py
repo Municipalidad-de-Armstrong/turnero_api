@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Tuple
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,10 +7,10 @@ from app.models.agenda_configuracion import AgendaConfiguracion
 
 
 async def seed_agenda_configs(
-    session: AsyncSession, catalog: Dict[str, Dict[str, Any]]
+    session: AsyncSession, catalog: dict[str, dict[str, Any]]
 ) -> None:
     """Seed distinct agenda configurations for each tramite."""
-    agenda_rules: Dict[str, List[Tuple[int, str, str, int]]] = {
+    agenda_rules: dict[str, list[tuple[int, str, str, int]]] = {
         "Licencia de Conducir": [
             (day, "08:00", "12:00", 2) for day in range(1, 6)
         ],

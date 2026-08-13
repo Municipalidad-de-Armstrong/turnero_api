@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,11 +50,11 @@ async def get_user_notifications(
     db: AsyncSession,
     usuario_id: int,
     solo_no_leidas: bool = False,
-) -> List[Notificacion]:
+) -> list[Notificacion]:
     """Retrieves notifications for a user."""
     query = select(Notificacion).where(Notificacion.usuario_id == usuario_id)
     if solo_no_leidas:
-        query = query.where(Notificacion.leida == False)  # noqa: E712
+        query = query.where(Notificacion.leida == False)
     query = query.order_by(Notificacion.created_at.desc())
     result = await db.execute(query)
     return list(result.scalars().all())
@@ -65,7 +65,7 @@ async def update_notification_read_status(
     notificacion_id: int,
     usuario_id: int,
     leida: bool,
-) -> Optional[Notificacion]:
+) -> Notificacion | None:
     """Updates the read status of a notification belonging to the user."""
     query = select(Notificacion).where(
         Notificacion.id == notificacion_id,

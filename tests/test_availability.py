@@ -1,5 +1,6 @@
 from datetime import date, datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi import HTTPException, status
 
@@ -7,7 +8,7 @@ from app.models.agenda_configuracion import AgendaConfiguracion
 from app.models.tramite import Tramite
 from app.models.turno import Turno
 from app.models.variante import Variante
-from app.services.availability_service import AvailabilityService, LOCAL_TZ
+from app.services.availability_service import LOCAL_TZ, AvailabilityService
 
 
 @pytest.mark.asyncio

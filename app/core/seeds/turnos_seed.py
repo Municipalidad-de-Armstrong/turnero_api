@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,8 +12,8 @@ from app.models.usurpation_report import UsurpationReport
 
 async def seed_turnos_and_reports(
     session: AsyncSession,
-    users: Dict[str, User],
-    catalog: Dict[str, Dict[str, Any]],
+    users: dict[str, User],
+    catalog: dict[str, dict[str, Any]],
 ) -> None:
     """Seed test turnos and DNI usurpation reports."""
     now = datetime.now(timezone.utc)

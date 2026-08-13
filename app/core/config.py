@@ -1,4 +1,5 @@
-from typing import Any, List, Union, Optional
+from typing import Any
+
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -9,7 +10,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # CORS
-    BACKEND_CORS_ORIGINS: Union[List[str], str] = [
+    BACKEND_CORS_ORIGINS: list[str] | str = [
         "http://localhost:3000",
         "http://localhost:8000",
         "https://turnos.armstrong.gob.ar",
@@ -17,7 +18,7 @@ class Settings(BaseSettings):
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> List[str]:
+    def assemble_cors_origins(cls, v: str | list[str]) -> list[str]:
         if isinstance(v, str):
             v_str = v.strip()
             if not v_str:
@@ -56,7 +57,7 @@ class Settings(BaseSettings):
     # Redis 8
     REDIS_HOST: str = "localhost"
     REDIS_PORT: str = "6379"
-    REDIS_URL: Optional[str] = None
+    REDIS_URL: str | None = None
 
     @property
     def redis_url(self) -> str:

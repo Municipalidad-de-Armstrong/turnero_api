@@ -1,14 +1,15 @@
 import json
 import logging
-from typing import List
+
 from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.core.redis import get_redis_client
 from app.models.agenda_configuracion import AgendaConfiguracion
 from app.models.tramite import Tramite
-from app.schemas.agenda import AgendaConfigSaveItem, AgendaConfigResponse
+from app.schemas.agenda import AgendaConfigResponse, AgendaConfigSaveItem
 
 logger = logging.getLogger(__name__)
 
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 class AgendaService:
 
     @staticmethod
-    async def get_agenda_config(db: AsyncSession, tramite_id: int) -> List[AgendaConfiguracion]:
+    async def get_agenda_config(db: AsyncSession, tramite_id: int) -> list[AgendaConfiguracion]:
         tramite_res = await db.execute(select(Tramite).where(Tramite.id == tramite_id))
         if not tramite_res.scalar_one_or_none():
             raise HTTPException(
@@ -64,8 +65,8 @@ class AgendaService:
 
     @staticmethod
     async def save_agenda_config(
-        db: AsyncSession, tramite_id: int, data: List[AgendaConfigSaveItem]
-    ) -> List[AgendaConfiguracion]:
+        db: AsyncSession, tramite_id: int, data: list[AgendaConfigSaveItem]
+    ) -> list[AgendaConfiguracion]:
         tramite_res = await db.execute(select(Tramite).where(Tramite.id == tramite_id))
         if not tramite_res.scalar_one_or_none():
             raise HTTPException(

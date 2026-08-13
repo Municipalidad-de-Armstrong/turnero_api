@@ -1,7 +1,7 @@
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
-import redis.asyncio as aioredis
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -28,7 +28,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
         await db.execute(text("SELECT 1"))
         db_status = "online"
     except Exception as e:
-        errors.append(f"Database error: {str(e)}")
+        errors.append(f"Database error: {e!s}")
 
     # Verify Redis connection
     if settings.is_production:
@@ -41,7 +41,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
             finally:
                 await redis_client.aclose()
         except Exception as e:
-            errors.append(f"Redis error: {str(e)}")
+            errors.append(f"Redis error: {e!s}")
     else:
         # En dev, reflejar el backend realmente en uso.
         try:
@@ -57,7 +57,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
             else:
                 errors.append("Redis error: cliente no inicializado.")
         except Exception as e:
-            errors.append(f"Redis error: {str(e)}")
+            errors.append(f"Redis error: {e!s}")
 
     unhealthy = db_status != "online" or not redis_status.startswith("online")
     if unhealthy:

@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Optional
+
 from sqlalchemy import (
     Boolean,
     Column,
@@ -15,6 +15,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 
 turno_variante_table = Table(
@@ -70,16 +71,16 @@ class Turno(Base):
     es_sobreturno: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False
     )
-    sobreturno_prioridad: Mapped[Optional[str]] = mapped_column(
+    sobreturno_prioridad: Mapped[str | None] = mapped_column(
         String(20), nullable=True
     )
-    motivo_cancelacion: Mapped[Optional[str]] = mapped_column(
+    motivo_cancelacion: Mapped[str | None] = mapped_column(
         Text, nullable=True
     )
-    cancelado_por_id: Mapped[Optional[int]] = mapped_column(
+    cancelado_por_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("usuarios.id"), nullable=True
     )
-    resultado_comentario: Mapped[Optional[str]] = mapped_column(
+    resultado_comentario: Mapped[str | None] = mapped_column(
         Text, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(

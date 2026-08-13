@@ -1,6 +1,8 @@
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 
 if TYPE_CHECKING:
@@ -14,4 +16,4 @@ class Role(Base):
     nombre: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     descripcion: Mapped[str] = mapped_column(String(255), nullable=True)
 
-    usuarios: Mapped[List["User"]] = relationship("User", back_populates="rol")
+    usuarios: Mapped[list["User"]] = relationship("User", back_populates="rol")

@@ -1,5 +1,5 @@
 from datetime import date
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,10 +30,10 @@ router = APIRouter(tags=["Trámites"])
 
 
 # --- TRÁMITES ---
-@router.get("/tramites", response_model=List[TramiteResponse])
+@router.get("/tramites", response_model=list[TramiteResponse])
 async def list_tramites(
-    area_id: Optional[int] = Query(None),
-    search: Optional[str] = Query(None),
+    area_id: int | None = Query(None),
+    search: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ):
     return await CatalogService.get_all_tramites(db, area_id=area_id, search=search)
@@ -109,7 +109,7 @@ async def delete_variante(
 # --- DOCUMENTOS ADJUNTOS ---
 @router.get(
     "/tramites/{tramite_id}/documentos",
-    response_model=List[TramiteDocumentoResponse],
+    response_model=list[TramiteDocumentoResponse],
 )
 async def list_tramite_documentos(
     tramite_id: int, db: AsyncSession = Depends(get_db)
@@ -150,7 +150,7 @@ async def delete_tramite_documento(
 # --- ENLACES ÚTILES ---
 @router.get(
     "/tramites/{tramite_id}/enlaces",
-    response_model=List[TramiteEnlaceResponse],
+    response_model=list[TramiteEnlaceResponse],
 )
 async def list_tramite_enlaces(
     tramite_id: int, db: AsyncSession = Depends(get_db)
@@ -188,12 +188,12 @@ async def delete_tramite_enlace(
 # --- DISPONIBILIDAD Y PRIMER TURNO ---
 @router.get(
     "/tramites/{tramite_id}/disponibilidad",
-    response_model=List[BloqueDisponibilidad],
+    response_model=list[BloqueDisponibilidad],
 )
 async def get_disponibilidad(
     tramite_id: int,
     fecha: date = Query(...),
-    variante_ids: List[int] = Query(default=[]),
+    variante_ids: list[int] = Query(default=[]),
     for_admin: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
 ):
@@ -208,7 +208,7 @@ async def get_disponibilidad(
 )
 async def get_primer_turno_disponible(
     tramite_id: int,
-    variante_ids: List[int] = Query(default=[]),
+    variante_ids: list[int] = Query(default=[]),
     db: AsyncSession = Depends(get_db),
 ):
     return await AvailabilityService.get_primer_turno_disponible(

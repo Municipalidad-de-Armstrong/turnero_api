@@ -1,8 +1,6 @@
 import pytest
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.notificacion import Notificacion
 from app.services.notification_service import (
     create_in_app_notification,
     get_user_notifications,

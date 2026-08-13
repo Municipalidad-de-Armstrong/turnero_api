@@ -1,6 +1,6 @@
 from datetime import date, datetime, time, timedelta, timezone
-from typing import List
 from zoneinfo import ZoneInfo
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,8 +30,8 @@ class AvailabilityService:
 
     @classmethod
     async def validate_tramite_and_variantes(
-        cls, db: AsyncSession, tramite_id: int, variante_ids: List[int]
-    ) -> List[Variante]:
+        cls, db: AsyncSession, tramite_id: int, variante_ids: list[int]
+    ) -> list[Variante]:
         if not variante_ids:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -72,9 +72,9 @@ class AvailabilityService:
         db: AsyncSession,
         tramite_id: int,
         fecha: date,
-        variante_ids: List[int],
+        variante_ids: list[int],
         for_admin: bool = False,
-    ) -> List[BloqueDisponibilidad]:
+    ) -> list[BloqueDisponibilidad]:
         variantes = await cls.validate_tramite_and_variantes(
             db, tramite_id, variante_ids
         )
@@ -111,7 +111,7 @@ class AvailabilityService:
         turnos_res = await db.execute(turnos_stmt)
         turnos = list(turnos_res.scalars().all())
 
-        bloques: List[BloqueDisponibilidad] = []
+        bloques: list[BloqueDisponibilidad] = []
         current_start = dt_start
         step = timedelta(minutes=15)
         duracion_td = timedelta(minutes=duracion_total)
@@ -141,7 +141,7 @@ class AvailabilityService:
 
     @classmethod
     async def get_primer_turno_disponible(
-        cls, db: AsyncSession, tramite_id: int, variante_ids: List[int]
+        cls, db: AsyncSession, tramite_id: int, variante_ids: list[int]
     ) -> BloqueDisponibilidad:
         await cls.validate_tramite_and_variantes(db, tramite_id, variante_ids)
         today = datetime.now(LOCAL_TZ).date()

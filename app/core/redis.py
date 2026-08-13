@@ -17,7 +17,7 @@ sigue consumiendo ``redis.setex(...)`` etc. sin enterarse del backend.
 
 import logging
 import time
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 import redis.asyncio as aioredis
 
@@ -25,8 +25,8 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-_redis_client: Optional[Any] = None
-_redis_kind: Optional[str] = None  # "real" | "memory" | None (sin inicializar)
+_redis_client: Any | None = None
+_redis_kind: str | None = None  # "real" | "memory" | None (sin inicializar)
 
 
 class InMemoryRedis:
@@ -39,9 +39,9 @@ class InMemoryRedis:
 
     def __init__(self) -> None:
         # key -> (value, expires_at_epoch | None)
-        self._store: Dict[str, Tuple[Any, Optional[float]]] = {}
+        self._store: dict[str, tuple[Any, float | None]] = {}
 
-    def _expired(self, expires_at: Optional[float]) -> bool:
+    def _expired(self, expires_at: float | None) -> bool:
         return expires_at is not None and time.time() >= expires_at
 
     def _purge(self, key: str) -> None:
@@ -52,12 +52,12 @@ class InMemoryRedis:
     async def ping(self) -> bool:
         return True
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         self._purge(key)
         entry = self._store.get(key)
         return entry[0] if entry else None
 
-    async def set(self, key: str, value: Any, ex: Optional[int] = None) -> bool:
+    async def set(self, key: str, value: Any, ex: int | None = None) -> bool:
         expires_at = (time.time() + ex) if ex else None
         self._store[key] = (value, expires_at)
         return True
@@ -169,7 +169,7 @@ def reset_redis_client() -> None:
     _redis_kind = None
 
 
-def redis_kind() -> Optional[str]:
+def redis_kind() -> str | None:
     """Inspect: devuelve el backend activo ('real' | 'memory' | None)."""
     return _redis_kind
 

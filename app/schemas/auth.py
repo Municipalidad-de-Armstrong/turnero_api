@@ -1,6 +1,6 @@
 import re
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
@@ -57,8 +57,8 @@ class UserResponse(BaseModel):
 
 
 class UserUpdateRequest(BaseModel):
-    telefono: Optional[str] = Field(None, min_length=6, max_length=20)
-    email: Optional[EmailStr] = None
+    telefono: str | None = Field(None, min_length=6, max_length=20)
+    email: EmailStr | None = None
 
 
 class PasswordChangeRequest(BaseModel):
@@ -93,11 +93,11 @@ class UsurpationReportResponse(BaseModel):
     motivo: str
     estado: str
     created_at: datetime
-    resolved_at: Optional[datetime] = None
+    resolved_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class UsurpationReportUpdate(BaseModel):
     estado: str = Field(..., pattern="^(PENDIENTE|RESUELTO|RECHAZADO)$")
-    comentario_resolucion: Optional[str] = Field(None, max_length=1000)
+    comentario_resolucion: str | None = Field(None, max_length=1000)

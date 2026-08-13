@@ -1,6 +1,7 @@
+import os
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
-import os
+
 import pytest
 from fastapi import HTTPException, status
 from httpx import AsyncClient

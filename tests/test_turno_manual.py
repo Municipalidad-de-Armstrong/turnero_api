@@ -1,14 +1,14 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from fastapi import HTTPException, status
 
 from app.models.role import Role
 from app.models.tramite import Tramite
 from app.models.turno import Turno
 from app.models.user import User
-from app.schemas.turno import TurnoCreateRequest, DatosRegistroInmediato
+from app.schemas.turno import DatosRegistroInmediato, TurnoCreateRequest
 from app.services.turno_service import TurnoService
 
 

@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, Request, Response, status
 import redis.asyncio as aioredis
+from fastapi import APIRouter, Depends, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_redis

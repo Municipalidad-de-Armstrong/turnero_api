@@ -1,9 +1,10 @@
-from typing import List, Optional
 import logging
-from fastapi import HTTPException, status
+
 import redis.asyncio as aioredis
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.security import (
     create_access_token,
     decrypt_pii,
@@ -23,13 +24,13 @@ from app.schemas.auth import (
     UsurpationReportCreate,
     UsurpationReportResponse,
 )
-from app.services.auth_token_service import AuthTokenService, PASSWORD_RESET_KEY_PREFIX
+from app.services.auth_token_service import AuthTokenService
 
 logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    def __init__(self, db: AsyncSession, redis: Optional[aioredis.Redis] = None):
+    def __init__(self, db: AsyncSession, redis: aioredis.Redis | None = None):
         self.db = db
         self.redis = redis
         self._token_service = AuthTokenService(db, redis)
@@ -172,7 +173,7 @@ class AuthService:
             resolved_at=report.resolved_at,
         )
 
-    async def list_usurpation_reports(self) -> List[UsurpationReportResponse]:
+    async def list_usurpation_reports(self) -> list[UsurpationReportResponse]:
         stmt = select(UsurpationReport).order_by(UsurpationReport.created_at.desc())
         res = await self.db.execute(stmt)
         reports = res.scalars().all()

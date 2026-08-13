@@ -1,11 +1,19 @@
-from io import BytesIO
 import os
 import re
+from io import BytesIO
+
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import HRFlowable, Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-
+from reportlab.platypus import (
+    HRFlowable,
+    Image,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 
 def clean_markdown(text: str) -> str:

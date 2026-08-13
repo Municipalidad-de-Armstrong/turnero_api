@@ -1,4 +1,4 @@
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -13,12 +13,12 @@ from app.services.notification_service import (
 router = APIRouter(prefix="/usuarios", tags=["Notificaciones"])
 
 
-@router.get("/me/notificaciones", response_model=List[NotificationResponse])
+@router.get("/me/notificaciones", response_model=list[NotificationResponse])
 async def list_my_notifications(
     solo_no_leidas: bool = True,
     db: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user),
-) -> List[NotificationResponse]:
+) -> list[NotificationResponse]:
     """Returns platform notifications for the authenticated user."""
     notifs = await get_user_notifications(
         db, usuario_id=current_user.id, solo_no_leidas=solo_no_leidas

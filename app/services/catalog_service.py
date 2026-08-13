@@ -1,22 +1,21 @@
-from typing import List, Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.models.area import Area
 from app.models.tramite import Tramite
 from app.models.turno import Turno
+from app.models.variante import Variante
 from app.schemas.area import AreaCreateRequest, AreaUpdateRequest
 from app.schemas.tramite import TramiteCreateRequest, TramiteUpdateRequest
-
-
-from sqlalchemy.orm import selectinload
-from app.models.variante import Variante
 
 
 class CatalogService:
 
     @staticmethod
-    async def get_all_areas(db: AsyncSession) -> List[Area]:
+    async def get_all_areas(db: AsyncSession) -> list[Area]:
         result = await db.execute(select(Area).order_by(Area.nombre))
         return list(result.scalars().all())
 
@@ -79,9 +78,9 @@ class CatalogService:
     @staticmethod
     async def get_all_tramites(
         db: AsyncSession,
-        area_id: Optional[int] = None,
-        search: Optional[str] = None,
-    ) -> List[Tramite]:
+        area_id: int | None = None,
+        search: str | None = None,
+    ) -> list[Tramite]:
         query = (
             select(Tramite)
             .options(
@@ -99,7 +98,7 @@ class CatalogService:
         return list(result.scalars().all())
 
     @staticmethod
-    async def get_tramites_by_area(db: AsyncSession, area_id: int) -> List[Tramite]:
+    async def get_tramites_by_area(db: AsyncSession, area_id: int) -> list[Tramite]:
         await CatalogService.get_area_by_id(db, area_id)
         return await CatalogService.get_all_tramites(db, area_id=area_id)
 

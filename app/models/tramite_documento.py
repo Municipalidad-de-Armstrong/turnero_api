@@ -1,8 +1,10 @@
 import os
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING
+
 from sqlalchemy import DateTime, ForeignKey, String, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 from app.core.uploads import url_to_fs_path
 

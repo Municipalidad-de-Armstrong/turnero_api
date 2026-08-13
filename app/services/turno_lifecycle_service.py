@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,8 +11,8 @@ from app.models.turno import Turno
 from app.models.user import User
 from app.schemas.turno import TurnoResponse, TurnoUpdateRequest
 from app.services.availability_service import (
-    AvailabilityService,
     LOCAL_TZ,
+    AvailabilityService,
     _min_booking_time,
 )
 
@@ -24,7 +24,7 @@ class TurnoLifecycleService:
         db: AsyncSession,
         current_user: User,
         turno_id: uuid.UUID,
-        motivo_cancelacion: Optional[str] = None,
+        motivo_cancelacion: str | None = None,
     ) -> TurnoResponse:
         from app.services.turno_service import turno_to_response
 

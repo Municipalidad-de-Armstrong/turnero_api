@@ -1,13 +1,18 @@
 import uuid
 from datetime import date
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import require_roles
 from app.core.database import get_db
 from app.models.user import User
-from app.schemas.turno import TurnoResponse, TurnoResultadoRequest, TurnoCreateRequest, SobreturnoCreateRequest
+from app.schemas.turno import (
+    SobreturnoCreateRequest,
+    TurnoCreateRequest,
+    TurnoResponse,
+    TurnoResultadoRequest,
+)
 from app.services.operation_service import OperationService
 from app.services.turno_service import TurnoService
 
@@ -16,16 +21,16 @@ router = APIRouter(prefix="/admin", tags=["admin-operation"])
 
 @router.get(
     "/dashboard/cola",
-    response_model=List[TurnoResponse],
+    response_model=list[TurnoResponse],
     summary="Obtener la cola de atención del día con ordenamiento de regular y sobreturnos",
 )
 async def get_cola_dia(
-    fecha: Optional[date] = Query(None, description="Fecha de atención (YYYY-MM-DD). Por defecto la fecha actual."),
-    tramite_id: Optional[int] = Query(None, description="Filtro opcional por ID de trámite"),
-    area_id: Optional[int] = Query(None, description="Filtro opcional por ID de área"),
+    fecha: date | None = Query(None, description="Fecha de atención (YYYY-MM-DD). Por defecto la fecha actual."),
+    tramite_id: int | None = Query(None, description="Filtro opcional por ID de trámite"),
+    area_id: int | None = Query(None, description="Filtro opcional por ID de área"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_roles(["ADMINISTRATIVO", "ADMINISTRADOR"])),
-) -> List[TurnoResponse]:
+) -> list[TurnoResponse]:
     return await OperationService.get_cola_dia(
         db=db, fecha=fecha, tramite_id=tramite_id, area_id=area_id
     )

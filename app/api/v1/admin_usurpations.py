@@ -1,10 +1,10 @@
 from datetime import datetime, timezone
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.deps import require_roles, get_db
+from app.api.deps import get_db, require_roles
 from app.core.security import decrypt_pii, mask_dni, mask_phone
 from app.models.usurpation_report import UsurpationReport
 from app.schemas.auth import (
@@ -26,8 +26,8 @@ async def create_public_report(
     return await service.create_usurpation_report(req)
 
 
-@router.get("/admin/reportes-usurpacion", response_model=List[UsurpationReportResponse])
-@router.get("/admin/usurpaciones", response_model=List[UsurpationReportResponse])
+@router.get("/admin/reportes-usurpacion", response_model=list[UsurpationReportResponse])
+@router.get("/admin/usurpaciones", response_model=list[UsurpationReportResponse])
 async def list_usurpations(
     db: AsyncSession = Depends(get_db),
     _user=Depends(require_roles(["administrador", "administrativo"])),

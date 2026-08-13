@@ -1,7 +1,9 @@
 from datetime import datetime, timezone
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.core.database import Base
 
 if TYPE_CHECKING:
@@ -19,7 +21,7 @@ class Variante(Base):
         ForeignKey("tramites.id", ondelete="CASCADE"), nullable=False, index=True
     )
     nombre: Mapped[str] = mapped_column(String(150), nullable=False)
-    descripcion: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
     duracion_minutos: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

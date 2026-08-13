@@ -1,7 +1,7 @@
 import logging
 import os
 import uuid
-from typing import List
+
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -94,7 +94,7 @@ class CatalogSubresourcesService:
     @staticmethod
     async def get_documentos_by_tramite(
         db: AsyncSession, tramite_id: int
-    ) -> List[TramiteDocumento]:
+    ) -> list[TramiteDocumento]:
         res = await db.execute(
             select(TramiteDocumento)
             .where(TramiteDocumento.tramite_id == tramite_id)
@@ -196,7 +196,7 @@ class CatalogSubresourcesService:
     @staticmethod
     async def get_enlaces_by_tramite(
         db: AsyncSession, tramite_id: int
-    ) -> List[TramiteEnlace]:
+    ) -> list[TramiteEnlace]:
         res = await db.execute(
             select(TramiteEnlace)
             .where(TramiteEnlace.tramite_id == tramite_id)

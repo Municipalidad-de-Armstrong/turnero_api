@@ -1,4 +1,4 @@
-from typing import List, Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +11,6 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-
 from app.models.role import Role
 from app.models.user import User
 from app.schemas.auth import PasswordChangeRequest, UserResponse, UserUpdateRequest
@@ -85,11 +84,11 @@ async def change_my_password(
 
 
 
-@router.get("", response_model=List[UserResponse])
+@router.get("", response_model=list[UserResponse])
 async def list_usuarios(
-    dni: Optional[str] = Query(None),
-    email: Optional[str] = Query(None),
-    rol: Optional[str] = Query(None),
+    dni: str | None = Query(None),
+    email: str | None = Query(None),
+    rol: str | None = Query(None),
     db: AsyncSession = Depends(get_db),
     _user=Depends(require_roles(["administrador", "administrativo"])),
 ):

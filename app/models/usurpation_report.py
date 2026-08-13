@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
-from typing import Optional
+
 from sqlalchemy import DateTime, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
+
 from app.core.database import Base
 
 
@@ -22,7 +23,7 @@ class UsurpationReport(Base):
         default=lambda: datetime.now(timezone.utc),
         nullable=False,
     )
-    resolved_at: Mapped[Optional[datetime]] = mapped_column(
+    resolved_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
     )

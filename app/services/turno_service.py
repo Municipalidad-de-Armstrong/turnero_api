@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime, time, timedelta
-from typing import List, Optional
+from datetime import datetime, time, timedelta, timezone
+
 from fastapi import HTTPException, status
-from sqlalchemy import select, and_
+from sqlalchemy import and_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -14,8 +14,8 @@ from app.models.turno import Turno
 from app.models.user import User
 from app.schemas.turno import TurnoCreateRequest, TurnoResponse, TurnoUpdateRequest
 from app.services.availability_service import (
-    AvailabilityService,
     LOCAL_TZ,
+    AvailabilityService,
     _min_booking_time,
 )
 from app.services.turno_lifecycle_service import TurnoLifecycleService
@@ -232,15 +232,15 @@ class TurnoService:
         cls,
         db: AsyncSession,
         current_user: User,
-        fecha_desde: Optional[datetime] = None,
-        fecha_hasta: Optional[datetime] = None,
-        area_id: Optional[int] = None,
-        tramite_id: Optional[int] = None,
-        estado: Optional[str] = None,
-        es_sobreturno: Optional[bool] = None,
-        dni: Optional[str] = None,
-        search: Optional[str] = None,
-    ) -> List[TurnoResponse]:
+        fecha_desde: datetime | None = None,
+        fecha_hasta: datetime | None = None,
+        area_id: int | None = None,
+        tramite_id: int | None = None,
+        estado: str | None = None,
+        es_sobreturno: bool | None = None,
+        dni: str | None = None,
+        search: str | None = None,
+    ) -> list[TurnoResponse]:
         stmt = select(Turno).options(
             selectinload(Turno.ciudadano),
             selectinload(Turno.tramite),
@@ -288,7 +288,7 @@ class TurnoService:
         db: AsyncSession,
         current_user: User,
         turno_id: uuid.UUID,
-        motivo_cancelacion: Optional[str] = None,
+        motivo_cancelacion: str | None = None,
     ) -> TurnoResponse:
         return await TurnoLifecycleService.cancel_turno(
             db, current_user, turno_id, motivo_cancelacion

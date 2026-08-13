@@ -1,12 +1,15 @@
 import logging
 import os
 from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import (
+    admin_config,
     admin_operation,
+    admin_users,
     admin_usurpations,
     agenda,
     areas,
@@ -17,7 +20,6 @@ from app.api.v1 import (
     turnos,
     users,
 )
-
 from app.core.config import settings
 from app.core.database import async_session_maker
 from app.core.redis import close_redis_client, get_redis_client, redis_kind
@@ -90,6 +92,8 @@ app.mount("/static/uploads", StaticFiles(directory="uploads"), name="static_uplo
 
 app.include_router(health.router, prefix=settings.API_V1_STR)
 app.include_router(auth.router, prefix=settings.API_V1_STR)
+app.include_router(admin_config.router, prefix=settings.API_V1_STR)
+app.include_router(admin_users.router, prefix=settings.API_V1_STR)
 app.include_router(admin_usurpations.router, prefix=settings.API_V1_STR)
 app.include_router(admin_operation.router, prefix=settings.API_V1_STR)
 app.include_router(users.router, prefix=settings.API_V1_STR)

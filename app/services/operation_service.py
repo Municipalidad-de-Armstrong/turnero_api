@@ -1,19 +1,28 @@
 import uuid
 from datetime import date, datetime, time, timezone
-from typing import List, Optional
+
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.security import hash_carnet_hmac, encrypt_pii, hash_dni_hmac, hash_password
+from app.core.security import (
+    encrypt_pii,
+    hash_carnet_hmac,
+    hash_dni_hmac,
+    hash_password,
+)
 from app.models.carnet import Carnet
 from app.models.role import Role
 from app.models.tramite import Tramite
 from app.models.turno import Turno
 from app.models.user import User
 from app.models.variante import Variante
-from app.schemas.turno import TurnoResponse, TurnoResultadoRequest, SobreturnoCreateRequest
+from app.schemas.turno import (
+    SobreturnoCreateRequest,
+    TurnoResponse,
+    TurnoResultadoRequest,
+)
 from app.services.availability_service import LOCAL_TZ
 from app.services.turno_service import TurnoService, turno_to_response
 
@@ -25,10 +34,10 @@ class OperationService:
     async def get_cola_dia(
         cls,
         db: AsyncSession,
-        fecha: Optional[date] = None,
-        tramite_id: Optional[int] = None,
-        area_id: Optional[int] = None,
-    ) -> List[TurnoResponse]:
+        fecha: date | None = None,
+        tramite_id: int | None = None,
+        area_id: int | None = None,
+    ) -> list[TurnoResponse]:
         if not fecha:
             fecha = datetime.now(LOCAL_TZ).date()
 

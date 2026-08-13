@@ -1,4 +1,4 @@
-from typing import List
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,7 +11,7 @@ router = APIRouter(tags=["Trámites"])
 
 @router.get(
     "/tramites/{tramite_id}/agenda-configuracion",
-    response_model=List[AgendaConfigResponse],
+    response_model=list[AgendaConfigResponse],
 )
 async def get_agenda_configuracion(
     tramite_id: int,
@@ -23,11 +23,11 @@ async def get_agenda_configuracion(
 
 @router.post(
     "/tramites/{tramite_id}/agenda-configuracion",
-    response_model=List[AgendaConfigResponse],
+    response_model=list[AgendaConfigResponse],
 )
 async def save_agenda_configuracion(
     tramite_id: int,
-    req: List[AgendaConfigSaveItem],
+    req: list[AgendaConfigSaveItem],
     db: AsyncSession = Depends(get_db),
     _user=Depends(require_roles(["administrador", "administrativo"])),
 ):

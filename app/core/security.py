@@ -1,14 +1,16 @@
 import base64
-import hmac
 import hashlib
+import hmac
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any
+
+import bcrypt
 import jwt
 from cryptography.fernet import Fernet
-import bcrypt
+
 from app.core.config import settings
 
-_fernet_instance: Optional[Fernet] = None
+_fernet_instance: Fernet | None = None
 
 
 def _get_fernet() -> Fernet:
@@ -41,7 +43,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def create_access_token(
-    subject: Dict[str, Any], expires_delta: Optional[timedelta] = None
+    subject: dict[str, Any], expires_delta: timedelta | None = None
 ) -> str:
     """Create a JWT access token with an expiration timestamp."""
     to_encode = subject.copy()
@@ -58,7 +60,7 @@ def create_access_token(
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Dict[str, Any]:
+def decode_access_token(token: str) -> dict[str, Any]:
     """Decode and validate a JWT access token."""
     return jwt.decode(
         token, settings.JWT_SECRET, algorithms=[settings.ALGORITHM]

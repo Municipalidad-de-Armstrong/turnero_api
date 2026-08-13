@@ -1,10 +1,12 @@
 from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi import HTTPException, status
 from httpx import AsyncClient
 
 from app.models.user import User
-from app.services.auth_service import AuthService, PASSWORD_RESET_KEY_PREFIX
+from app.services.auth_service import AuthService
+from app.services.auth_token_service import PASSWORD_RESET_KEY_PREFIX
 
 
 def _build_user_mock(activo: bool = True, estado: str = "ACTIVE") -> MagicMock:
@@ -34,7 +36,7 @@ async def test_create_reset_token_persists_in_redis():
 
     # Debe haber persistido exactamente un token con TTL configurado.
     assert redis.setex.await_count == 1
-    args, kwargs = redis.setex.call_args
+    args, _kwargs = redis.setex.call_args
     key = args[0]
     assert key.startswith(f"{PASSWORD_RESET_KEY_PREFIX}:")
     # El segundo argumento posicional de setex es el TTL en segundos (15 min).

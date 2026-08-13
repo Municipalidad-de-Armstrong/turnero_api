@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Union
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,13 +6,13 @@ from app.core.security import encrypt_pii, hash_dni_hmac, hash_password
 from app.models.role import Role
 from app.models.user import User
 
-ROLES_DATA: List[Tuple[int, str, str]] = [
+ROLES_DATA: list[tuple[int, str, str]] = [
     (1, "ciudadano", "Ciudadano solicitante de turnos"),
     (2, "administrativo", "Personal administrativo de atención"),
     (3, "administrador", "Administrador general del sistema"),
 ]
 
-DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
+DEV_ACCOUNTS: list[dict[str, str | int]] = [
     {
         "email": "admin.dev@armstrong.gov.ar",
         "password": "Admin123!",
@@ -70,7 +70,7 @@ DEV_ACCOUNTS: List[Dict[str, Union[str, int]]] = [
 ]
 
 
-async def seed_roles_and_users(session: AsyncSession) -> Dict[str, User]:
+async def seed_roles_and_users(session: AsyncSession) -> dict[str, User]:
     """Seed roles and dev user accounts. Returns dict of users keyed by email."""
     for role_id, role_name, role_desc in ROLES_DATA:
         stmt = select(Role).where(Role.id == role_id)
@@ -79,7 +79,7 @@ async def seed_roles_and_users(session: AsyncSession) -> Dict[str, User]:
             session.add(Role(id=role_id, nombre=role_name, descripcion=role_desc))
     await session.commit()
 
-    created_users: Dict[str, User] = {}
+    created_users: dict[str, User] = {}
     for acc in DEV_ACCOUNTS:
         email = str(acc["email"])
         stmt = select(User).where(User.email == email)

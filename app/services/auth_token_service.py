@@ -1,10 +1,11 @@
-from typing import Optional
-import secrets
 import logging
-from fastapi import HTTPException, status
+import secrets
+
 import redis.asyncio as aioredis
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.core.config import settings
 from app.core.security import hash_password
 from app.models.user import User
@@ -15,7 +16,7 @@ PASSWORD_RESET_KEY_PREFIX = "pwdreset"
 
 
 class AuthTokenService:
-    def __init__(self, db: AsyncSession, redis: Optional[aioredis.Redis] = None):
+    def __init__(self, db: AsyncSession, redis: aioredis.Redis | None = None):
         self.db = db
         self.redis = redis
 
@@ -62,7 +63,7 @@ class AuthTokenService:
             logger.warning("Redis caído en dev: is_token_blacklisted -> False.", exc_info=True)
             return False
 
-    async def create_password_reset_token(self, email: str) -> Optional[str]:
+    async def create_password_reset_token(self, email: str) -> str | None:
         """Genera un token opaco de reseteo y lo persiste en Redis con TTL corto."""
         if not self.redis:
             if settings.is_production:

@@ -1,6 +1,7 @@
-from typing import AsyncGenerator, List, Optional
-from fastapi import Depends, HTTPException, Request, status
+from collections.abc import AsyncGenerator
+
 import redis.asyncio as aioredis
+from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -12,7 +13,7 @@ from app.core.security import decode_access_token
 from app.models.user import User
 
 
-async def get_redis() -> AsyncGenerator[Optional[aioredis.Redis], None]:
+async def get_redis() -> AsyncGenerator[aioredis.Redis | None, None]:
     """Devuelve el cliente Redis global (real o mock en dev), lazy-inicializado."""
     client = await get_redis_client()
     yield client
@@ -21,7 +22,7 @@ async def get_redis() -> AsyncGenerator[Optional[aioredis.Redis], None]:
 async def get_current_user(
     request: Request,
     db: AsyncSession = Depends(get_db),
-    redis: Optional[aioredis.Redis] = Depends(get_redis),
+    redis: aioredis.Redis | None = Depends(get_redis),
 ) -> User:
     token = request.cookies.get(settings.SESSION_COOKIE_NAME)
     if not token:
@@ -77,7 +78,7 @@ async def get_current_user(
     return user
 
 
-def require_roles(allowed_roles: List[str]):
+def require_roles(allowed_roles: list[str]):
     async def role_checker(
         current_user: User = Depends(get_current_user),
     ) -> User:
