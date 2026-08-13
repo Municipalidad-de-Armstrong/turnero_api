@@ -54,7 +54,7 @@ async def get_user_notifications(
     """Retrieves notifications for a user."""
     query = select(Notificacion).where(Notificacion.usuario_id == usuario_id)
     if solo_no_leidas:
-        query = query.where(Notificacion.leida == False)
+        query = query.where(Notificacion.leida.is_(False))
     query = query.order_by(Notificacion.created_at.desc())
     result = await db.execute(query)
     return list(result.scalars().all())

@@ -4,15 +4,17 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from sqlalchemy.pool import NullPool
+
 from app.core.config import settings
 from app.core.database import get_db
 from app.main import app
 
-# Setup test engine
+# Setup test engine with NullPool to avoid cross-test event loop issues
 test_engine = create_async_engine(
     settings.async_database_url,
     future=True,
-    pool_pre_ping=True,
+    poolclass=NullPool,
 )
 
 test_async_session_maker = async_sessionmaker(

@@ -50,14 +50,6 @@ def generate_turno_planilla_pdf(
 
     styles = getSampleStyleSheet()
 
-    header_title_style = ParagraphStyle(
-        "HeaderTitleWhite",
-        parent=styles["Heading1"],
-        fontName="Helvetica-Bold",
-        fontSize=18,
-        textColor=colors.HexColor("#FFFFFF"),
-        alignment=1,
-    )
     header_subtitle_style = ParagraphStyle(
         "HeaderSubtitleWhite",
         parent=styles["Normal"],

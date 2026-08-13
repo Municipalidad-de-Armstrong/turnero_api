@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, time, timedelta, timezone
+from datetime import datetime, time, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select
@@ -19,33 +19,9 @@ from app.services.availability_service import (
     _min_booking_time,
 )
 from app.services.turno_lifecycle_service import TurnoLifecycleService
+from app.services.turno_mapper import turno_to_response
 
-
-def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
-    c = turno.ciudadano
-    t = turno.tramite
-    dni_v = decrypt_pii(c.dni_cifrado) if (include_pii and c and c.dni_cifrado) else None
-    ph_v = decrypt_pii(c.telefono_cifrado) if (include_pii and c and c.telefono_cifrado) else None
-    return TurnoResponse(
-        id=turno.id,
-        ciudadano_id=turno.ciudadano_id,
-        ciudadano_nombre_completo=f"{c.nombre} {c.apellido}" if c else None,
-        ciudadano_dni=dni_v,
-        ciudadano_telefono=ph_v,
-        tramite_id=turno.tramite_id,
-        tramite_nombre=t.nombre if t else None,
-        emite_carnet=t.emite_carnet if t else None,
-        fecha_hora_inicio=turno.fecha_hora_inicio,
-        fecha_hora_fin=turno.fecha_hora_fin,
-        estado=turno.estado,
-        es_sobreturno=turno.es_sobreturno if turno.es_sobreturno is not None else False,
-        sobreturno_prioridad=turno.sobreturno_prioridad,
-        motivo_cancelacion=turno.motivo_cancelacion,
-        cancelado_por_id=turno.cancelado_por_id,
-        resultado_comentario=turno.resultado_comentario,
-        variantes=list(turno.variantes) if turno.variantes else [],
-        created_at=turno.created_at or datetime.now(timezone.utc),
-    )
+__all__ = ["TurnoService", "decrypt_pii", "turno_to_response"]
 
 
 
