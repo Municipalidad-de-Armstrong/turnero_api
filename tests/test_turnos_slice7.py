@@ -107,8 +107,15 @@ async def test_create_turno_conflict_409():
     user = User(id=1, nombre="Juan", apellido="Perez", rol=Role(id=1, nombre="CIUDADANO"))
 
     variantes = [Variante(id=1, tramite_id=10, duracion_minutos=30)]
+    target_dt = (datetime.now(timezone.utc) + timedelta(days=7)).replace(hour=12, minute=0, second=0, microsecond=0)
     agenda = AgendaConfiguracion(
-        id=1, tramite_id=10, dia_semana=1, hora_inicio="08:00", hora_fin="12:00", capacidad_simultanea=1, activo=True
+        id=1,
+        tramite_id=10,
+        dia_semana=target_dt.isoweekday(),
+        hora_inicio="08:00",
+        hora_fin="18:00",
+        capacidad_simultanea=1,
+        activo=True,
     )
 
     # Mock availability check & overlapping turnos returning 1 existing overlapping turno
@@ -126,7 +133,7 @@ async def test_create_turno_conflict_409():
         req = TurnoCreateRequest(
             tramite_id=10,
             variante_ids=[1],
-            fecha_hora_inicio=datetime(2026, 8, 17, 12, 0, tzinfo=timezone.utc), # Lunes 09:00 ART
+            fecha_hora_inicio=target_dt,
         )
 
         with pytest.raises(HTTPException) as exc_info:

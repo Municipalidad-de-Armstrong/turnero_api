@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -80,10 +80,11 @@ async def test_get_disponibilidad_with_capacity_and_overlap():
         Variante(id=10, tramite_id=1, nombre="V1", duracion_minutos=30)
     ]
     mock_agenda = MagicMock()
+    target_date = date.today() + timedelta(days=7)
     agenda_obj = AgendaConfiguracion(
         id=1,
         tramite_id=1,
-        dia_semana=1,
+        dia_semana=target_date.isoweekday(),
         hora_inicio="08:00",
         hora_fin="09:00",
         capacidad_simultanea=1,
@@ -92,8 +93,8 @@ async def test_get_disponibilidad_with_capacity_and_overlap():
     mock_agenda.scalar_one_or_none.return_value = agenda_obj
 
     # Existing turno from 08:00 to 08:30 (local time)
-    t_start = datetime(2026, 8, 17, 8, 0, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
-    t_end = datetime(2026, 8, 17, 8, 30, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+    t_start = datetime.combine(target_date, time(8, 0), tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+    t_end = datetime.combine(target_date, time(8, 30), tzinfo=LOCAL_TZ).astimezone(timezone.utc)
     existing_turno = Turno(
         tramite_id=1,
         fecha_hora_inicio=t_start,
@@ -113,7 +114,7 @@ async def test_get_disponibilidad_with_capacity_and_overlap():
     ]
 
     res = await AvailabilityService.get_disponibilidad(
-        db, 1, date(2026, 8, 17), [10]
+        db, 1, target_date, [10]
     )
 
 
