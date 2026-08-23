@@ -78,7 +78,9 @@ async def test_catalog_service_tramite_crud():
     # Mock area existing and tramite creation
     mock_area = MagicMock()
     mock_area.scalar_one_or_none.return_value = Area(id=1, nombre="Tránsito")
-    db.execute.return_value = mock_area
+    mock_none_tramite = MagicMock()
+    mock_none_tramite.scalar_one_or_none.return_value = None
+    db.execute.side_effect = [mock_area, mock_none_tramite]
 
     tramite = await CatalogService.create_tramite(
         db,

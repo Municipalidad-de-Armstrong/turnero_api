@@ -32,13 +32,16 @@ class CatalogService:
 
     @staticmethod
     async def create_area(db: AsyncSession, data: AreaCreateRequest) -> Area:
-        existing = await db.execute(select(Area).where(Area.nombre == data.nombre))
+        clean_name = data.nombre.strip()
+        existing = await db.execute(
+            select(Area).where(func.lower(Area.nombre) == clean_name.lower())
+        )
         if existing.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Ya existe un área registrada con el nombre '{data.nombre}'",
+                detail=f"Ya existe un área registrada con el nombre '{clean_name}'",
             )
-        area = Area(nombre=data.nombre, descripcion=data.descripcion)
+        area = Area(nombre=clean_name, descripcion=data.descripcion)
         db.add(area)
         await db.commit()
         await db.refresh(area)
@@ -47,14 +50,21 @@ class CatalogService:
     @staticmethod
     async def update_area(db: AsyncSession, area_id: int, data: AreaUpdateRequest) -> Area:
         area = await CatalogService.get_area_by_id(db, area_id)
-        if data.nombre is not None and data.nombre != area.nombre:
-            existing = await db.execute(select(Area).where(Area.nombre == data.nombre))
-            if existing.scalar_one_or_none():
-                raise HTTPException(
-                    status_code=status.HTTP_409_CONFLICT,
-                    detail=f"Ya existe otra área con el nombre '{data.nombre}'",
+        if data.nombre is not None:
+            clean_name = data.nombre.strip()
+            if clean_name.lower() != area.nombre.lower():
+                existing = await db.execute(
+                    select(Area).where(
+                        func.lower(Area.nombre) == clean_name.lower(),
+                        Area.id != area_id,
+                    )
                 )
-            area.nombre = data.nombre
+                if existing.scalar_one_or_none():
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Ya existe otra área con el nombre '{clean_name}'",
+                    )
+            area.nombre = clean_name
         if data.descripcion is not None:
             area.descripcion = data.descripcion
         await db.commit()
@@ -126,12 +136,24 @@ class CatalogService:
     @staticmethod
     async def create_tramite(db: AsyncSession, data: TramiteCreateRequest) -> Tramite:
         await CatalogService.get_area_by_id(db, data.area_id)
+        clean_name = data.nombre.strip()
+        existing = await db.execute(
+            select(Tramite).where(
+                Tramite.area_id == data.area_id,
+                func.lower(Tramite.nombre) == clean_name.lower(),
+            )
+        )
+        if existing.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe un trámite registrado con el nombre '{clean_name}' en esta área.",
+            )
         tramite = Tramite(
             area_id=data.area_id,
-            nombre=data.nombre,
-            descripcion=data.descripcion,
-            documentacion_requerida=data.documentacion_requerida,
-            requerimientos_previos=data.requerimientos_previos,
+            nombre=clean_name,
+            descripcion=data.descripcion.strip() if data.descripcion else None,
+            documentacion_requerida=data.documentacion_requerida.strip(),
+            requerimientos_previos=data.requerimientos_previos.strip() if data.requerimientos_previos else None,
             emite_carnet=data.emite_carnet,
             limite_sobreturnos_diarios=data.limite_sobreturnos_diarios,
         )
@@ -155,13 +177,27 @@ class CatalogService:
     ) -> Tramite:
         tramite = await CatalogService.get_tramite_by_id(db, tramite_id)
         if data.nombre is not None:
-            tramite.nombre = data.nombre
+            clean_name = data.nombre.strip()
+            if clean_name.lower() != tramite.nombre.lower():
+                existing = await db.execute(
+                    select(Tramite).where(
+                        Tramite.area_id == tramite.area_id,
+                        func.lower(Tramite.nombre) == clean_name.lower(),
+                        Tramite.id != tramite_id,
+                    )
+                )
+                if existing.scalar_one_or_none():
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail=f"Ya existe otro trámite con el nombre '{clean_name}' en esta área.",
+                    )
+            tramite.nombre = clean_name
         if data.descripcion is not None:
-            tramite.descripcion = data.descripcion
+            tramite.descripcion = data.descripcion.strip() if data.descripcion else None
         if data.documentacion_requerida is not None:
-            tramite.documentacion_requerida = data.documentacion_requerida
+            tramite.documentacion_requerida = data.documentacion_requerida.strip()
         if data.requerimientos_previos is not None:
-            tramite.requerimientos_previos = data.requerimientos_previos
+            tramite.requerimientos_previos = data.requerimientos_previos.strip() if data.requerimientos_previos else None
         if data.emite_carnet is not None:
             tramite.emite_carnet = data.emite_carnet
         if data.limite_sobreturnos_diarios is not None:

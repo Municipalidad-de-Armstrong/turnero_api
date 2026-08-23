@@ -3,9 +3,17 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 class AgendaConfigSaveItem(BaseModel):
     dia_semana: int = Field(..., ge=0, le=6, description="0=Domingo, 1=Lunes, ..., 6=Sábado")
-    hora_inicio: str = Field(..., pattern=r"^\d{2}:\d{2}$", json_schema_extra={"example": "08:00"})
-    hora_fin: str = Field(..., pattern=r"^\d{2}:\d{2}$", json_schema_extra={"example": "12:00"})
-    capacidad_simultanea: int = Field(..., ge=1, json_schema_extra={"example": 2})
+    hora_inicio: str = Field(
+        ...,
+        pattern=r"^([01]\d|2[0-3]):([0-5]\d)$",
+        json_schema_extra={"example": "08:00"},
+    )
+    hora_fin: str = Field(
+        ...,
+        pattern=r"^([01]\d|2[0-3]):([0-5]\d)$",
+        json_schema_extra={"example": "12:00"},
+    )
+    capacidad_simultanea: int = Field(..., ge=1, le=50, json_schema_extra={"example": 2})
     activo: bool = Field(True, json_schema_extra={"example": True})
 
     @model_validator(mode="after")

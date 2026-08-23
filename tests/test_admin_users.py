@@ -1,3 +1,4 @@
+import random
 import uuid
 
 import pytest
@@ -14,9 +15,9 @@ async def test_admin_user_management(
     client: AsyncClient, db_session: AsyncSession
 ):
     """Test administrative user list, create, update, and soft delete."""
-    unique_suffix = str(uuid.uuid4())[:8]
-    unique_email = f"testop.{unique_suffix}@armstrong.gov.ar"
-    unique_dni = f"35{unique_suffix[:6]}"
+    unique_num = random.randint(100000, 999999)
+    unique_email = f"testop.{unique_num}@armstrong.gov.ar"
+    unique_dni = f"35{unique_num}"
 
     # 1. Login as Admin
     login_resp = await client.post(

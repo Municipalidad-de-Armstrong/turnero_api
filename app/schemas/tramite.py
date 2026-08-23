@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.schemas.tramite_documento import TramiteDocumentoResponse
 from app.schemas.tramite_enlace import TramiteEnlaceResponse
@@ -14,7 +14,15 @@ class TramiteCreateRequest(BaseModel):
     documentacion_requerida: str = Field(..., min_length=3)
     requerimientos_previos: str | None = Field(None)
     emite_carnet: bool = Field(default=False)
-    limite_sobreturnos_diarios: int | None = Field(default=5, ge=0)
+    limite_sobreturnos_diarios: int | None = Field(default=5, ge=0, le=50)
+
+    @field_validator("nombre")
+    @classmethod
+    def clean_name(cls, v: str) -> str:
+        clean = v.strip()
+        if len(clean) < 3:
+            raise ValueError("El nombre debe tener al menos 3 caracteres.")
+        return clean
 
 
 class TramiteUpdateRequest(BaseModel):
@@ -23,7 +31,17 @@ class TramiteUpdateRequest(BaseModel):
     documentacion_requerida: str | None = Field(None, min_length=3)
     requerimientos_previos: str | None = Field(None)
     emite_carnet: bool | None = Field(None)
-    limite_sobreturnos_diarios: int | None = Field(None, ge=0)
+    limite_sobreturnos_diarios: int | None = Field(None, ge=0, le=50)
+
+    @field_validator("nombre")
+    @classmethod
+    def clean_name(cls, v: str | None) -> str | None:
+        if v is not None:
+            clean = v.strip()
+            if len(clean) < 3:
+                raise ValueError("El nombre debe tener al menos 3 caracteres.")
+            return clean
+        return None
 
 
 class TramiteResponse(BaseModel):

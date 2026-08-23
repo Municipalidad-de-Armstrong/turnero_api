@@ -3,6 +3,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import re
+
 from app.api.deps import get_current_user, get_db, require_roles
 from app.core.security import (
     decrypt_pii,
@@ -94,9 +96,10 @@ async def list_usuarios(
 ):
     stmt = select(User)
     if email:
-        stmt = stmt.where(User.email == email)
+        stmt = stmt.where(User.email == email.strip().lower())
     if dni:
-        dni_hmac_val = hash_dni_hmac(dni)
+        clean_dni = re.sub(r"\D", "", dni.strip())
+        dni_hmac_val = hash_dni_hmac(clean_dni)
         stmt = stmt.where(User.dni_hmac == dni_hmac_val)
     if rol:
         stmt_role = select(Role).where(Role.nombre == rol.lower())

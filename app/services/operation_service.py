@@ -135,13 +135,16 @@ class OperationService:
                     detail="La fecha de vencimiento es obligatoria para trámites que emiten carnet.",
                 )
 
-            try:
-                venc_date = date.fromisoformat(data.fecha_vencimiento)
-            except ValueError:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Formato de fecha de vencimiento inválido. Use YYYY-MM-DD.",
-                )
+            if isinstance(data.fecha_vencimiento, date):
+                venc_date = data.fecha_vencimiento
+            else:
+                try:
+                    venc_date = date.fromisoformat(str(data.fecha_vencimiento))
+                except ValueError:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Formato de fecha de vencimiento inválido. Use YYYY-MM-DD.",
+                    )
 
             if venc_date <= date.today():
                 raise HTTPException(
@@ -186,13 +189,16 @@ class OperationService:
                 detail="Trámite no encontrado.",
             )
 
-        try:
-            fecha_obj = date.fromisoformat(data.fecha)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Formato de fecha inválido. Use YYYY-MM-DD.",
-            )
+        if isinstance(data.fecha, date):
+            fecha_obj = data.fecha
+        else:
+            try:
+                fecha_obj = date.fromisoformat(str(data.fecha))
+            except ValueError:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Formato de fecha inválido. Use YYYY-MM-DD.",
+                )
 
         start_dt = datetime.combine(fecha_obj, time.min, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
         end_dt = datetime.combine(fecha_obj, time.max, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
