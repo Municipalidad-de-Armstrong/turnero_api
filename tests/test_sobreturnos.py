@@ -28,6 +28,7 @@ async def test_crear_sobreturno_exitoso():
 
     mock_count_res = MagicMock()
     mock_count_res.scalars.return_value.all.return_value = []
+    mock_count_res.scalar_one_or_none.return_value = None
     db.execute.return_value = mock_count_res
 
     data = SobreturnoCreateRequest(
@@ -128,4 +129,55 @@ async def test_list_turnos_includes_sobreturnos_with_date_filter():
         assert len(res) == 1
         assert res[0].es_sobreturno is True
         assert res[0].sobreturno_prioridad == "ALTA"
+
+
+@pytest.mark.asyncio
+async def test_crear_sobreturno_toma_hora_fin_agenda():
+    """Verifica que el sobreturno tome como hora de inicio la hora_fin de la agenda configurada."""
+    from app.models.agenda_configuracion import AgendaConfiguracion
+    from app.services.availability_service import LOCAL_TZ
+
+    db = AsyncMock()
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+    db.commit = AsyncMock()
+
+    admin = User(id=1, nombre="Admin", apellido="User", rol=Role(id=2, nombre="ADMINISTRATIVO"))
+    ciudadano = User(id=5, nombre="Juan", apellido="Perez", dni_cifrado="dummy", rol=Role(id=1, nombre="CIUDADANO"))
+    tramite = Tramite(id=10, nombre="Licencia de Conducir", limite_sobreturnos_diarios=5)
+
+    db.get.side_effect = lambda model, pk: tramite if model == Tramite else (ciudadano if pk == 5 else None)
+
+    agenda_lunes = AgendaConfiguracion(
+        id=1, tramite_id=10, dia_semana=1, hora_inicio="08:00", hora_fin="14:00", activo=True
+    )
+
+    mock_count_res = MagicMock()
+    mock_count_res.scalars.return_value.all.return_value = []
+
+    mock_agenda_res = MagicMock()
+    mock_agenda_res.scalar_one_or_none.return_value = agenda_lunes
+
+    db.execute.side_effect = [mock_count_res, mock_agenda_res]
+
+    fecha_test = date(2026, 8, 24)  # Lunes
+    data = SobreturnoCreateRequest(
+        tramite_id=10,
+        fecha=fecha_test.isoformat(),
+        prioridad="ALTA",
+        ciudadano_id=5,
+    )
+
+    async def fake_get_turno_by_id(db_session, user, turno_id):
+        # Inspect the added Turno
+        added_turno = db.add.call_args[0][0]
+        return added_turno
+
+    with patch("app.services.turno_service.TurnoService.get_turno_by_id", side_effect=fake_get_turno_by_id):
+        res = await OperationService.crear_sobreturno(db, data, admin)
+        # Convert start time to local timezone to check hour
+        local_dt = res.fecha_hora_inicio.astimezone(LOCAL_TZ)
+        assert local_dt.hour == 14
+        assert local_dt.minute == 0
+
 

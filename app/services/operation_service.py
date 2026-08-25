@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime, time, timezone
+from datetime import date, datetime, time, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -12,6 +12,7 @@ from app.core.security import (
     hash_dni_hmac,
     hash_password,
 )
+from app.models.agenda_configuracion import AgendaConfiguracion
 from app.models.carnet import Carnet
 from app.models.role import Role
 from app.models.tramite import Tramite
@@ -28,8 +29,6 @@ from app.services.turno_service import TurnoService, turno_to_response
 
 
 class OperationService:
-
-
     @classmethod
     async def get_cola_dia(
         cls,
@@ -116,12 +115,11 @@ class OperationService:
                 detail="El estado resultado debe ser COMPLETO, INCOMPLETO o AUSENTE.",
             )
 
-        if nuevo_estado == "INCOMPLETO":
-            if not data.resultado_comentario or not data.resultado_comentario.strip():
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Debe ingresar obligatoriamente un comentario descriptivo al marcar como INCOMPLETO.",
-                )
+        if nuevo_estado == "INCOMPLETO" and (not data.resultado_comentario or not data.resultado_comentario.strip()):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debe ingresar obligatoriamente un comentario descriptivo al marcar como INCOMPLETO.",
+            )
 
         if nuevo_estado == "COMPLETO" and turno.tramite and turno.tramite.emite_carnet:
             if not data.numero_carnet or not data.numero_carnet.strip():
@@ -135,16 +133,10 @@ class OperationService:
                     detail="La fecha de vencimiento es obligatoria para trámites que emiten carnet.",
                 )
 
-            if isinstance(data.fecha_vencimiento, date):
-                venc_date = data.fecha_vencimiento
-            else:
-                try:
-                    venc_date = date.fromisoformat(str(data.fecha_vencimiento))
-                except ValueError:
-                    raise HTTPException(
-                        status_code=status.HTTP_400_BAD_REQUEST,
-                        detail="Formato de fecha de vencimiento inválido. Use YYYY-MM-DD.",
-                    )
+            try:
+                venc_date = data.fecha_vencimiento if isinstance(data.fecha_vencimiento, date) else date.fromisoformat(str(data.fecha_vencimiento))
+            except ValueError:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Formato de fecha de vencimiento inválido. Use YYYY-MM-DD.")
 
             if venc_date <= date.today():
                 raise HTTPException(
@@ -152,15 +144,11 @@ class OperationService:
                     detail="La fecha de vencimiento debe ser posterior a la fecha actual.",
                 )
 
-            num_carnet_raw = data.numero_carnet.strip()
-            num_carnet_cifrado = encrypt_pii(num_carnet_raw)
-            num_carnet_hmac = hash_carnet_hmac(num_carnet_raw)
-
             carnet = Carnet(
                 ciudadano_id=turno.ciudadano_id,
                 tramite_id=turno.tramite_id,
-                numero_carnet_cifrado=num_carnet_cifrado,
-                numero_carnet_hmac=num_carnet_hmac,
+                numero_carnet_cifrado=encrypt_pii(data.numero_carnet.strip()),
+                numero_carnet_hmac=hash_carnet_hmac(data.numero_carnet.strip()),
                 fecha_emision=date.today(),
                 fecha_vencimiento=venc_date,
                 activo=True,
@@ -200,15 +188,15 @@ class OperationService:
                     detail="Formato de fecha inválido. Use YYYY-MM-DD.",
                 )
 
-        start_dt = datetime.combine(fecha_obj, time.min, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
-        end_dt = datetime.combine(fecha_obj, time.max, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+        start_dt_day = datetime.combine(fecha_obj, time.min, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+        end_dt_day = datetime.combine(fecha_obj, time.max, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
 
         stmt_count = select(Turno).where(
             Turno.tramite_id == data.tramite_id,
             Turno.es_sobreturno.is_(True),
             Turno.estado != "CANCELADO",
-            Turno.fecha_hora_inicio >= start_dt,
-            Turno.fecha_hora_inicio <= end_dt,
+            Turno.fecha_hora_inicio >= start_dt_day,
+            Turno.fecha_hora_inicio <= end_dt_day,
         )
         res_count = await db.execute(stmt_count)
         existing_sobreturnos = res_count.scalars().all()
@@ -220,14 +208,35 @@ class OperationService:
                 detail=f"Límite diario de sobreturnos alcanzado para esta fecha (Máximo {limite}).",
             )
 
+        db_weekday = (fecha_obj.weekday() + 1) % 7
+        agenda_stmt = select(AgendaConfiguracion).where(
+            AgendaConfiguracion.tramite_id == data.tramite_id,
+            AgendaConfiguracion.dia_semana == db_weekday,
+            AgendaConfiguracion.activo.is_(True),
+        )
+        agenda_res = await db.execute(agenda_stmt)
+        agenda = agenda_res.scalar_one_or_none()
+        if not agenda:
+            all_res = await db.execute(select(AgendaConfiguracion).where(AgendaConfiguracion.tramite_id == data.tramite_id, AgendaConfiguracion.activo.is_(True)))
+            agendas_list = all_res.scalars().all()
+            if agendas_list:
+                agenda = max(agendas_list, key=lambda a: a.hora_fin)
+
+        hora_fin_val = getattr(agenda, "hora_fin", None) if agenda else None
+        if isinstance(hora_fin_val, str):
+            h_fin = time.fromisoformat(hora_fin_val)
+        elif isinstance(hora_fin_val, time):
+            h_fin = hora_fin_val
+        else:
+            h_fin = time(14, 0)
+
+        dt_inicio = datetime.combine(fecha_obj, h_fin, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+
         ciudadano_id = None
         if data.ciudadano_id:
             user = await db.get(User, data.ciudadano_id)
             if not user:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="Ciudadano no encontrado.",
-                )
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Ciudadano no encontrado.")
             ciudadano_id = user.id
         elif data.datos_registro_inmediato:
             reg = data.datos_registro_inmediato
@@ -238,20 +247,13 @@ class OperationService:
             if usr:
                 ciudadano_id = usr.id
             else:
-                stmt_role = select(Role).where(Role.nombre == "ciudadano")
-                role_res = await db.execute(stmt_role)
-                role = role_res.scalar_one_or_none()
-
+                role = (await db.execute(select(Role).where(Role.nombre == "ciudadano"))).scalar_one_or_none()
                 new_user = User(
-                    email=reg.email,
-                    password_hash=hash_password(uuid.uuid4().hex),
-                    nombre=reg.nombre,
-                    apellido=reg.apellido,
-                    dni_cifrado=encrypt_pii(reg.dni),
-                    dni_hmac=dni_hmac_val,
+                    email=reg.email, password_hash=hash_password(uuid.uuid4().hex),
+                    nombre=reg.nombre, apellido=reg.apellido,
+                    dni_cifrado=encrypt_pii(reg.dni), dni_hmac=dni_hmac_val,
                     telefono_cifrado=encrypt_pii(reg.telefono),
-                    rol_id=role.id if role else 1,
-                    estado="PENDING_VALIDATION",
+                    rol_id=role.id if role else 1, estado="PENDING_VALIDATION",
                 )
                 db.add(new_user)
                 await db.flush()
@@ -272,12 +274,15 @@ class OperationService:
             res_v = await db.execute(stmt_v)
             variantes_objs = list(res_v.scalars().all())
 
+        duracion_total = sum(v.duracion_minutos for v in variantes_objs) or 15
+        dt_fin = dt_inicio + timedelta(minutes=duracion_total)
+
         nuevo_turno = Turno(
             id=uuid.uuid4(),
             ciudadano_id=ciudadano_id,
             tramite_id=data.tramite_id,
-            fecha_hora_inicio=start_dt,
-            fecha_hora_fin=end_dt,
+            fecha_hora_inicio=dt_inicio,
+            fecha_hora_fin=dt_fin,
             estado="RESERVADO",
             es_sobreturno=True,
             sobreturno_prioridad=prio,
