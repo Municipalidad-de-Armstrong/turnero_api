@@ -16,6 +16,7 @@ class Area(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     nombre: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     descripcion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    direccion: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

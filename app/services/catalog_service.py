@@ -41,7 +41,11 @@ class CatalogService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Ya existe un área registrada con el nombre '{clean_name}'",
             )
-        area = Area(nombre=clean_name, descripcion=data.descripcion)
+        area = Area(
+            nombre=clean_name,
+            descripcion=data.descripcion,
+            direccion=data.direccion,
+        )
         db.add(area)
         await db.commit()
         await db.refresh(area)
@@ -67,6 +71,8 @@ class CatalogService:
             area.nombre = clean_name
         if data.descripcion is not None:
             area.descripcion = data.descripcion
+        if data.direccion is not None:
+            area.direccion = data.direccion
         await db.commit()
         await db.refresh(area)
         return area

@@ -19,13 +19,20 @@ async def test_catalog_service_area_crud():
     # Mock get_all_areas
     mock_result_all = MagicMock()
     mock_result_all.scalars.return_value.all.return_value = [
-        Area(id=1, nombre="Tránsito", descripcion="Licencias", created_at=datetime.now(timezone.utc))
+        Area(
+            id=1,
+            nombre="Tránsito",
+            descripcion="Licencias",
+            direccion="San Martín 1790",
+            created_at=datetime.now(timezone.utc),
+        )
     ]
     db.execute.return_value = mock_result_all
 
     areas = await CatalogService.get_all_areas(db)
     assert len(areas) == 1
     assert areas[0].nombre == "Tránsito"
+    assert areas[0].direccion == "San Martín 1790"
 
     # Mock create_area (existing conflict)
     mock_existing = MagicMock()
@@ -34,7 +41,7 @@ async def test_catalog_service_area_crud():
 
     with pytest.raises(HTTPException) as exc_info:
         await CatalogService.create_area(
-            db, AreaCreateRequest(nombre="Tránsito", descripcion="Licencias")
+            db, AreaCreateRequest(nombre="Tránsito", descripcion="Licencias", direccion="San Martín 1790")
         )
     assert exc_info.value.status_code == status.HTTP_409_CONFLICT
 

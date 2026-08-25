@@ -2,18 +2,22 @@ AREAS_DATA = [
     {
         "nombre": "Tránsito y Licencias",
         "descripcion": "Licencias de conducir, exámenes y patentes automotrices.",
+        "direccion": "San Martín 1790 (Palacio Municipal)",
     },
     {
         "nombre": "Obras Privadas y Catastro",
         "descripcion": "Permisos de edificación, mensuras, visado de planos y catastro urbano.",
+        "direccion": "San Martín 1790 (Piso 1)",
     },
     {
         "nombre": "Comercio e Inspección General",
         "descripcion": "Habilitaciones comerciales, industriales y control bromatológico.",
+        "direccion": "San Martín 1790 (Planta Baja)",
     },
     {
         "nombre": "Desarrollo Social y Salud",
         "descripcion": "Asistencia social, trámites de discapacidad y carnet de manipulador.",
+        "direccion": "Rivadavia y Fischer (Centro Asistencial)",
     },
 ]
 

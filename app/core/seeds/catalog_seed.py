@@ -56,10 +56,16 @@ async def seed_catalog(
             area = Area(
                 nombre=area_info["nombre"],
                 descripcion=area_info["descripcion"],
+                direccion=area_info.get("direccion"),
             )
             session.add(area)
             await session.commit()
             await session.refresh(area)
+        else:
+            if hasattr(area, "direccion") and area_info.get("direccion") and area.direccion != area_info["direccion"]:
+                area.direccion = area_info["direccion"]
+                await session.commit()
+                await session.refresh(area)
         areas_db[area_info["nombre"]] = area
 
     tramites_data = TRAMITES_DATA
