@@ -65,7 +65,7 @@ class TurnoUpdateRequest(BaseModel):
     fecha_hora_inicio: datetime | None = Field(None, description="Nueva fecha/hora para reprogramación")
     variante_ids: list[int] | None = Field(None, description="Nuevas variantes para reprogramación")
     estado: str | None = Field(None, pattern="^(RESERVADO|COMPLETO|INCOMPLETO|AUSENTE|CANCELADO)$", description="Nuevo estado")
-    motivo_cancelacion: str | None = Field(None, description="Motivo obligatorio si es cancelado por un administrativo")
+    motivo_cancelacion: str | None = Field(None, description="Motivo de cancelación (opcional)")
     resultado_comentario: str | None = Field(None, description="Comentario del administrativo tras la atención")
 
 

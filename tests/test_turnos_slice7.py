@@ -70,8 +70,8 @@ async def test_cancel_turno_ciudadano_less_than_24h_fails():
 
 
 @pytest.mark.asyncio
-async def test_cancel_turno_admin_requires_reason():
-    """Administrativo requiere ingresar motivo_cancelacion obligatoriamente."""
+async def test_cancel_turno_admin_optional_reason():
+    """El motivo_cancelacion es opcional al cancelar un turno."""
     db = AsyncMock()
     admin = User(id=2, nombre="Admin", apellido="Municipal", rol=Role(id=2, nombre="ADMINISTRATIVO"))
 
@@ -91,13 +91,16 @@ async def test_cancel_turno_admin_requires_reason():
     mock_res.scalar_one_or_none.return_value = turno
     db.execute.return_value = mock_res
 
-    with pytest.raises(HTTPException) as exc_info:
-        await TurnoService.cancel_turno(db, admin, turno.id, motivo_cancelacion="")
-    assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
+    # Cancelar sin motivo (motivo_cancelacion vacio o None)
+    res_sin_motivo = await TurnoService.cancel_turno(db, admin, turno.id, motivo_cancelacion="")
+    assert res_sin_motivo.estado == "CANCELADO"
+    assert res_sin_motivo.motivo_cancelacion is None
 
-    res = await TurnoService.cancel_turno(db, admin, turno.id, motivo_cancelacion="Falta de insumos")
-    assert res.estado == "CANCELADO"
-    assert res.motivo_cancelacion == "Falta de insumos"
+    # Cancelar con motivo
+    turno.estado = "RESERVADO"
+    res_con_motivo = await TurnoService.cancel_turno(db, admin, turno.id, motivo_cancelacion="Falta de insumos")
+    assert res_con_motivo.estado == "CANCELADO"
+    assert res_con_motivo.motivo_cancelacion == "Falta de insumos"
 
 
 @pytest.mark.asyncio

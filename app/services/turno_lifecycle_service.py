@@ -57,17 +57,10 @@ class TurnoLifecycleService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="No puede cancelar un turno con menos de 24 horas de anticipación.",
                 )
-        else:
-            if not motivo_cancelacion:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="Debe ingresar obligatoriamente un motivo de cancelación.",
-                )
 
         turno.estado = "CANCELADO"
         turno.cancelado_por_id = current_user.id
-        if motivo_cancelacion:
-            turno.motivo_cancelacion = motivo_cancelacion
+        turno.motivo_cancelacion = motivo_cancelacion.strip() if (motivo_cancelacion and motivo_cancelacion.strip()) else None
 
         await db.commit()
         await db.refresh(turno)
