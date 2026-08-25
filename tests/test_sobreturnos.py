@@ -87,3 +87,45 @@ async def test_crear_sobreturno_excede_limite_diario():
 
     assert exc_info.value.status_code == status.HTTP_400_BAD_REQUEST
     assert "Límite diario de sobreturnos alcanzado" in exc_info.value.detail
+
+
+@pytest.mark.asyncio
+async def test_list_turnos_includes_sobreturnos_with_date_filter():
+    """Verifica que list_turnos retorne sobreturnos al filtrar por fecha_desde y fecha_hasta."""
+    from app.services.turno_service import TurnoService
+    db = AsyncMock()
+    admin = User(id=1, nombre="Admin", apellido="User", rol=Role(id=2, nombre="ADMINISTRATIVO"))
+    ciudadano = User(id=5, nombre="Juan", apellido="Perez", dni_cifrado="dummy", rol=Role(id=1, nombre="CIUDADANO"))
+    tramite = Tramite(id=10, nombre="Licencia", limite_sobreturnos_diarios=5)
+
+    today = date.today()
+    start_dt = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc) + timedelta(hours=3)
+    fake_sobreturno = Turno(
+        id=uuid.uuid4(),
+        ciudadano_id=5,
+        tramite_id=10,
+        fecha_hora_inicio=start_dt,
+        fecha_hora_fin=start_dt + timedelta(hours=1),
+        estado="RESERVADO",
+        es_sobreturno=True,
+        sobreturno_prioridad="ALTA",
+        ciudadano=ciudadano,
+        tramite=tramite,
+        variantes=[],
+    )
+
+    mock_res = MagicMock()
+    mock_res.scalars.return_value.all.return_value = [fake_sobreturno]
+    db.execute.return_value = mock_res
+
+    with patch("app.services.turno_service.decrypt_pii", return_value="12345678"):
+        res = await TurnoService.list_turnos(
+            db=db,
+            current_user=admin,
+            fecha_desde=datetime.combine(today, datetime.min.time()),
+            fecha_hasta=datetime.combine(today, datetime.min.time()),
+        )
+        assert len(res) == 1
+        assert res[0].es_sobreturno is True
+        assert res[0].sobreturno_prioridad == "ALTA"
+

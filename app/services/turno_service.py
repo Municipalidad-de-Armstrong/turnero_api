@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import and_, select
@@ -230,9 +230,11 @@ class TurnoService:
             filters.append(Turno.ciudadano_id == current_user.id)
         else:
             if fecha_desde:
-                filters.append(Turno.fecha_hora_inicio >= fecha_desde)
+                dt_d = fecha_desde if fecha_desde.tzinfo is not None else datetime.combine(fecha_desde.date(), time.min, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+                filters.append(Turno.fecha_hora_inicio >= dt_d)
             if fecha_hasta:
-                filters.append(Turno.fecha_hora_inicio <= fecha_hasta)
+                dt_h = fecha_hasta if (fecha_hasta.tzinfo is not None and fecha_hasta.time() != time.min) else datetime.combine(fecha_hasta.date(), time.max, tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+                filters.append(Turno.fecha_hora_inicio <= dt_h)
             if area_id:
                 stmt = stmt.join(Turno.tramite).where(Tramite.area_id == area_id)
             if tramite_id:
