@@ -9,6 +9,7 @@ def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
 
     c = turno.ciudadano
     t = turno.tramite
+    a = t.area if t else None
     dni_v = decrypt_pii(c.dni_cifrado) if (include_pii and c and c.dni_cifrado) else None
     ph_v = decrypt_pii(c.telefono_cifrado) if (include_pii and c and c.telefono_cifrado) else None
     return TurnoResponse(
@@ -19,6 +20,9 @@ def turno_to_response(turno: Turno, include_pii: bool = False) -> TurnoResponse:
         ciudadano_telefono=ph_v,
         tramite_id=turno.tramite_id,
         tramite_nombre=t.nombre if t else None,
+        area_id=a.id if a else (t.area_id if t else None),
+        area_nombre=a.nombre if a else None,
+        area_direccion=a.direccion if a else None,
         emite_carnet=t.emite_carnet if t else None,
         fecha_hora_inicio=turno.fecha_hora_inicio,
         fecha_hora_fin=turno.fecha_hora_fin,

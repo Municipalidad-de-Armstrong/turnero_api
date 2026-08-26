@@ -47,6 +47,8 @@ class TramiteUpdateRequest(BaseModel):
 class TramiteResponse(BaseModel):
     id: int
     area_id: int
+    area_nombre: str | None = None
+    area_direccion: str | None = None
     nombre: str
     descripcion: str | None = None
     documentacion_requerida: str

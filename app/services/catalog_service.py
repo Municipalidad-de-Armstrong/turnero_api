@@ -100,6 +100,7 @@ class CatalogService:
         query = (
             select(Tramite)
             .options(
+                selectinload(Tramite.area),
                 selectinload(Tramite.variantes),
                 selectinload(Tramite.documentos),
                 selectinload(Tramite.enlaces),
@@ -123,6 +124,7 @@ class CatalogService:
         query = (
             select(Tramite)
             .options(
+                selectinload(Tramite.area),
                 selectinload(Tramite.variantes),
                 selectinload(Tramite.documentos),
                 selectinload(Tramite.enlaces),

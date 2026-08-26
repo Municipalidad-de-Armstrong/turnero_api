@@ -131,6 +131,8 @@ async def test_api_list_tramites(client: AsyncClient):
             TramiteResponse(
                 id=10,
                 area_id=1,
+                area_nombre="Rentas",
+                area_direccion="San Martín 1790 (Palacio Municipal)",
                 nombre="Pago TGI",
                 descripcion="Pago de tasa general inmueble",
                 documentacion_requerida="DNI y cedula catastral",
@@ -146,4 +148,6 @@ async def test_api_list_tramites(client: AsyncClient):
         data = res.json()
         assert len(data) == 1
         assert data[0]["nombre"] == "Pago TGI"
+        assert data[0]["area_nombre"] == "Rentas"
+        assert data[0]["area_direccion"] == "San Martín 1790 (Palacio Municipal)"
         assert data[0]["emite_carnet"] is False

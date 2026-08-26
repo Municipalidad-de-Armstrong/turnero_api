@@ -54,3 +54,11 @@ class Tramite(Base):
         "AgendaConfiguracion", back_populates="tramite", cascade="all, delete-orphan"
     )
 
+    @property
+    def area_nombre(self) -> str | None:
+        return self.area.nombre if self.area else None
+
+    @property
+    def area_direccion(self) -> str | None:
+        return self.area.direccion if self.area else None
+

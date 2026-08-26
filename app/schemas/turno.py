@@ -91,6 +91,9 @@ class TurnoResponse(BaseModel):
     ciudadano_telefono: str | None = None
     tramite_id: int
     tramite_nombre: str | None = None
+    area_id: int | None = None
+    area_nombre: str | None = None
+    area_direccion: str | None = None
     emite_carnet: bool | None = None
     fecha_hora_inicio: datetime
     fecha_hora_fin: datetime

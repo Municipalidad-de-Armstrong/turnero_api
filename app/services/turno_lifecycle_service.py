@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.agenda_configuracion import AgendaConfiguracion
+from app.models.tramite import Tramite
 from app.models.turno import Turno
 from app.models.user import User
 from app.schemas.turno import TurnoResponse, TurnoUpdateRequest
@@ -32,7 +33,7 @@ class TurnoLifecycleService:
             select(Turno)
             .options(
                 selectinload(Turno.ciudadano),
-                selectinload(Turno.tramite),
+                selectinload(Turno.tramite).selectinload(Tramite.area),
                 selectinload(Turno.variantes),
             )
             .where(Turno.id == turno_id)
@@ -80,7 +81,7 @@ class TurnoLifecycleService:
             select(Turno)
             .options(
                 selectinload(Turno.ciudadano),
-                selectinload(Turno.tramite),
+                selectinload(Turno.tramite).selectinload(Tramite.area),
                 selectinload(Turno.variantes),
             )
             .where(Turno.id == turno_id)

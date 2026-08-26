@@ -173,7 +173,7 @@ class TurnoService:
             select(Turno)
             .options(
                 selectinload(Turno.ciudadano),
-                selectinload(Turno.tramite),
+                selectinload(Turno.tramite).selectinload(Tramite.area),
                 selectinload(Turno.variantes),
             )
             .where(Turno.id == turno_id)
@@ -219,7 +219,7 @@ class TurnoService:
     ) -> list[TurnoResponse]:
         stmt = select(Turno).options(
             selectinload(Turno.ciudadano),
-            selectinload(Turno.tramite),
+            selectinload(Turno.tramite).selectinload(Tramite.area),
             selectinload(Turno.variantes),
         )
 
